@@ -1,0 +1,29 @@
+canvas{
+  width: 100%;
+}
+body{
+    background-color: #999999;
+    background-color: blue;
+    position: relative;
+    display: flex;
+    padding: 0;
+    margin: 0;
+}
+.containerL{
+    padding: 0;
+    width:auto;
+    text-align:center;
+    background-color:#ff0000;
+    left: 0;
+    border-right: 2px solid black;
+    background-color: black;
+}
+
+.containerR{
+  padding: 0;
+  text-align:center;
+  background-color:#ff0000;
+  right: 0;
+  border-left: 2px solid black;
+  background-color: yellow;
+}
