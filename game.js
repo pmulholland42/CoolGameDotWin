@@ -411,6 +411,7 @@ function shoot() {
 function physics() {
 	
 	// Player physics
+	// TODO: hitboxes and junk
 	// Gravity
 	if (gravDir == 'down') {
 		playerYSpeed += gravity;
