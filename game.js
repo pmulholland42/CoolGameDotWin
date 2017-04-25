@@ -57,52 +57,57 @@ var snekLast = null;
 var snekCount = 0;
 
 // Platform data
+// TODO: make a level building system
 var platform1Height = 220;
 var platform2Height = 600;
-var count = 0;
 
 var timeywimey = 0;
 
+
+var inputTimer = 0;
+var receiving = false;
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
 
-// Good stuff
+// Controller state
+var xDig;
+var yDig;
+var xAnlg;
+var yAnlg;
+var log;
 
-		var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');
+// Set up ScaleDrone for controller communication
+var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');	// TODO: Base this key on a qr code?
 drone.on('open', function (error) {
-  if (error) {
-    return console.error(error);
-  }
-  var room = drone.subscribe('my_game');
-  room.on('open', function (error) {
-    if (error) {
-      console.error(error);
-    } else {
-      console.log('Connected to room');
-    }
-  });
-  room.on('data', function (data) {
-  // Received data from room
-  stuff = data;
-  //console.log(data);
-		console.log(data);
-		count++;
-		heldKeys[68] = data.xdig > 0;
-		heldKeys[65] = data.xdig < 0;
-		heldKeys[87] = data.ydig > 0;
-			heldKeys[69] = (data.log === "tapFunction");
-		heldKeys[73] = (data.log === "swipeUFunction");
-		heldKeys[74] = (data.log === "swipeLFunction");
-		heldKeys[75] = (data.log === "swipeDFunction");
-		heldKeys[76] = (data.log === "swipeRFunction");
-		heldKeys[81] = (data.log === "doubleTapFunction");
-  });
+	if (error) {
+		return console.error(error);
+	}
   
+	var room = drone.subscribe('my_game');
+
+	// What happens when the connection is made
+	room.on('open', function (error) {
+		if (error) {
+			console.error(error);
+		} else {
+			console.log('Connected to room');
+		}
+	});
+
+	// What happens when we receive data
+	room.on('data', function (data) {
+		inputTimer = 0;
+		receiving = true;
+		console.log(data);
+		// Record controller state
+		xDig = data.xdig;
+		yDig = data.ydig;
+		log = data.log;
+	});
 });
 
 drone.on('error', function(error){
 	console.log(error);
 });
-
 
 
 function init() {
@@ -143,8 +148,10 @@ function init() {
 
 	
 	// These functions are called every 20 milliseconds:
-	// Parse the input - from keyboard for now
-	setInterval(parseInput, 20);
+	// Parse the input from the controller
+	setInterval(parseController, 20);
+	// Parse keyboard input
+	setInterval(parseKeyboard, 20);
 	// Calculate player physics
 	setInterval(physics, 20);
 	// Render the canvas
@@ -190,9 +197,64 @@ document.onkeyup = function(event) {
 	heldKeys[event.keyCode] = false;
 }
 
-// Interpret player input - called every 20ms
-function parseInput() {
+// Interpret data sent from phone controller
+function parseController() {
+	// If it's been a while since the last update, assume the player let go
+	inputTimer++;
+	// TODO: make the threshold dynamic maybe?
+	if (inputTimer > 7) {
+		console.log("Released");
+		receiving = false;
+		xDig = 0;
+		yDig = 0;
+		log = null;
+	}
 	
+	if (xDig > 0) {
+		if (gravDir == 'down' || gravDir == 'up') {
+			moveRight();
+		} else if (gravDir == 'left') {
+			jump();
+		}
+	} else if (xDig < 0) {
+		if (gravDir == 'down' || gravDir == 'up') {
+			moveLeft();
+		} else if (gravDir == 'right') {
+			jump();
+		}
+	}
+	
+	if (yDig > 0) {
+		if (gravDir == 'down') {
+			jump();
+		} else if (gravDir == 'right') {
+			moveRight();
+		} else if (gravDir == 'left') {
+			moveLeft();
+		}
+	}
+	
+	if (log === "tapFunction") {
+		shoot();
+	} else if (log === "swipeUFunction") {
+		gravDir = 'up';
+	} else if (log === "swipeLFunction") {
+		gravDir = 'left';
+	} else if (log === "swipeDFunction") {
+		gravDir = 'down';
+	} else if (log === "swipeRFunction") {
+		gravDir = 'right';
+	} else if (log === "doubleTapFunction") {
+		shoot();
+		if (playerX > 5*width/6 && playerY == height-floorHeight) {
+			winner = true;
+		}
+	}
+}
+
+// Interpret player input - called every 20ms
+function parseKeyboard() {
+
 	// Check the heldKeys array to see what the current input is
 	if (heldKeys[65]) { // A
 		if (gravDir == 'down' || gravDir == 'up') {
@@ -364,8 +426,8 @@ function physics() {
 	
 	// If the player is on the ground
 	if (grounded) {
-		// Apply friction when not holding left or right
-		if (!(heldKeys[65] || heldKeys[68])) {
+		// Apply friction when not being moved by player
+		if (!(receiving || heldKeys[65] || heldKeys[68])) {
 			if (playerXSpeed > 0) {
 				playerXSpeed -= friction;
 			}
@@ -529,7 +591,8 @@ function draw() {
 	c.lineWidth = "10";
 	
 	// Display stats
-	/*c.fillText('X velocity: '+playerXSpeed, 10, 40);
+	/*
+	c.fillText('X velocity: '+playerXSpeed, 10, 40);
 	c.fillText('X position: '+Math.floor(playerX), 10, 60);
 	c.fillText('Width: ' + width, 10, 80);
 	c.fillText('Y velocity: '+(-playerYSpeed), 10, 100);
@@ -540,7 +603,9 @@ function draw() {
 	c.fillText('W: '+heldKeys[87], 10, 200);
 	c.fillText('A: '+heldKeys[65], 10, 220);
 	c.fillText('S: '+heldKeys[83], 10, 240);
-	c.fillText('D: '+heldKeys[68], 10, 260);*/
+	c.fillText('D: '+heldKeys[68], 10, 260);
+	c.fillText('Timer: '+ inputTimer, 10, 280);
+	*/
 	
 	if (winner) {
 		c.font="60px Verdana";
