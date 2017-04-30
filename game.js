@@ -61,9 +61,7 @@ var snekCount = 0;
 var platform1Height = 220;
 var platform2Height = 600;
 
-var timeywimey = 0;
-
-
+// Input variables
 var inputTimer = 0;
 var receiving = false;
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
@@ -75,49 +73,18 @@ var xAnlg;
 var yAnlg;
 var log;
 
-// Set up ScaleDrone for controller communication
-var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');	// TODO: Base this key on a qr code?
-drone.on('open', function (error) {
-	if (error) {
-		return console.error(error);
-	}
-  
-	var room = drone.subscribe('my_game');
-
-	// What happens when the connection is made
-	room.on('open', function (error) {
-		if (error) {
-			console.error(error);
-		} else {
-			console.log('Connected to room');
-		}
-	});
-
-	// What happens when we receive data
-	room.on('data', function (data) {
-		inputTimer = 0;
-		receiving = true;
-		console.log(data);
-		// Record controller state
-		xDig = data.xdig;
-		yDig = data.ydig;
-		log = data.log;
-	});
-});
-
-drone.on('error', function(error){
-	console.log(error);
-});
-
+// FPS counter
+var now;
+var then = 0;
+var frameCount = 0;
+var fps = 0;
 
 function init() {
 	// Initial the canvas
 	setupCanvas();
-	
-	document.body.style.background = "url('bg.jpg')";
 
-	
 	// Load in all the sprites
+	document.body.style.background = "url('bg.jpg')";
 	snekman_down_right = document.createElement( 'img' );
 	snekman_down_left = document.createElement( 'img' );
 	snekman_up_right = document.createElement( 'img' );
@@ -141,11 +108,44 @@ function init() {
 	door.src = "door.png";
 	bg.src = "bg.jpg";
 	
+	// Create sneks
 	snekHead = {'health': 3, 'x': width/4, 'y': height - platform1Height, 'dir': "left", 'next': null, 'prev': null, 'time':0};
 	var newSnek = {'health': 3, 'x':3*width/4, 'y': height - platform2Height, 'dir': "right", 'next': null, 'prev': snekHead, 'time':0};
 	snekHead.next = newSnek;
 	snekCount++;
 
+	// Set up ScaleDrone for controller communication
+	var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');	// TODO: Base this key on a qr code?
+	drone.on('open', function (error) {
+		if (error) {
+			return console.error(error);
+		}
+		
+		var room = drone.subscribe('my_game');
+
+		// What happens when the connection is made
+		room.on('open', function (error) {
+			if (error) {
+				console.error(error);
+			} else {
+				console.log('Connected to room');
+			}
+		});
+
+		// What happens when we receive data
+		room.on('data', function (data) {
+			inputTimer = 0;
+			receiving = true;
+			console.log(data);
+			// Record controller state
+			xDig = data.xdig;
+			yDig = data.ydig;
+			log = data.log;
+		});
+	});
+	drone.on('error', function(error){
+		console.log(error);
+	});
 	
 	// These functions are called every 20 milliseconds:
 	// Parse the input from the controller
@@ -155,8 +155,11 @@ function init() {
 	// Calculate player physics
 	setInterval(physics, 20);
 	// Render the canvas
-	setInterval(draw, 20);
+	setInterval(draw, 16); // 60 FPS!!!!!
+	// Determine frames per second (once a second)
+	setInterval(countFrames, 1000);
 }//init
+
 
 function setupCanvas() {
 	// Create a <canvas> HTML tag
@@ -203,7 +206,6 @@ function parseController() {
 	inputTimer++;
 	// TODO: make the threshold dynamic maybe?
 	if (inputTimer > 7) {
-		console.log("Released");
 		receiving = false;
 		xDig = 0;
 		yDig = 0;
@@ -220,6 +222,7 @@ function parseController() {
 		if (gravDir == 'down' || gravDir == 'up') {
 			moveLeft();
 		} else if (gravDir == 'right') {
+			console.log("jump?");
 			jump();
 		}
 	}
@@ -231,6 +234,16 @@ function parseController() {
 			moveRight();
 		} else if (gravDir == 'left') {
 			moveLeft();
+		}
+	} else if (yDig < 0) {
+		if (gravDir == 'down') {
+			dropDown();
+		} else if (gravDir == 'up') {
+			jump();
+		} else if (gravDir == 'right') {
+			moveLeft();
+		} else if (gravDir == 'left') {
+			moveRight();
 		}
 	}
 	
@@ -293,16 +306,16 @@ function parseKeyboard() {
 	if (heldKeys[69]) { // E
 		shoot();
 	}
-	if (heldKeys[73]) { // I
+	if (heldKeys[73] || heldKeys[38]) { // I
 		gravDir = 'up';
 	}
-	if (heldKeys[74]) { // J
+	if (heldKeys[74] || heldKeys[37]) { // J
 		gravDir = 'left';
 	}
-	if (heldKeys[75]) { // K
+	if (heldKeys[75] || heldKeys[40]) { // K
 		gravDir = 'down';
 	}
-	if (heldKeys[76]) { // L
+	if (heldKeys[76] || heldKeys[39]) { // L
 		gravDir = 'right';
 	}
 	if (heldKeys[81]) { // Q
@@ -317,7 +330,7 @@ function jump() {
 	if (gravDir == 'down' && grounded) {
 		playerYSpeed = -jumpSpeed;
 		jumps++;
-	} else if (gravDir == 'right' && playerX > 1490) {
+	} else if (gravDir == 'right' && playerX > 1490) { // TODO: fix this check
 		playerXSpeed = -jumpSpeed;
 		jumps++;
 	} else if (gravDir == 'left' && playerX == 0) {
@@ -379,7 +392,6 @@ function dropDown() {
 	}
 }
 function shoot() {
-	timeywimey--;
 	// This adds a projectile json to the linked list
 	if (projTimer == 0) {
 		
@@ -585,13 +597,14 @@ function physics() {
 // Render the canvas - called every 20ms
 function draw() {
 	
-	c.font="15px Verdana";
 	// Erase the current canvas
     c.clearRect(0, 0, width, height);
 	c.drawImage(bg, 0, 0, width, height);
 	c.lineWidth = "10";
 	
 	// Display stats
+	c.font="15px Verdana";
+	c.fillText(fps + ' FPS', 10, 20);
 	/*
 	c.fillText('X velocity: '+playerXSpeed, 10, 40);
 	c.fillText('X position: '+Math.floor(playerX), 10, 60);
@@ -608,9 +621,11 @@ function draw() {
 	c.fillText('Timer: '+ inputTimer, 10, 280);
 	*/
 	
+	frameCount++;
+	
 	if (winner) {
 		c.font="60px Verdana";
-		c.fillText("You win!", width/2-120, height/2);
+		c.fillText("You win!", width/2-120, height/2-100);
 		c.font="15px Verdana";
 	}
 	
@@ -625,10 +640,10 @@ function draw() {
 	
 	c.stroke();
 	c.fillStyle = "white";
-	c.fillText('Double tap to open door.', 5*width/6+10, height-floorHeight-140);
-	c.fillText('Use the joystick to move.', width/6-200, height-floorHeight-120);
-	c.fillText('Tap to fire your weapon.', width/6+50, height-platform1Height-90);
-	c.fillText('Swipe to change the direction of gravity.', width/2-100, height/2);
+	c.fillText('Use the joystick or WASD to move.', 20, height-floorHeight-120);
+	c.fillText('Tap or press E to fire your weapon.', width/6+50, height-platform1Height-90);
+	c.fillText('Double tap or press Q to open door.', 5*width/6+10, height-floorHeight-140);
+	c.fillText('Swipe or use arrow keys to change the direction of gravity.', width/2-170, height/2);
 	c.beginPath();
 	// Draw the door
 	c.drawImage(door, 5*width/6+80, height-floorHeight-120, 60, 120);
@@ -699,6 +714,14 @@ function draw() {
 			}
 		}
 	}
+}
+
+function countFrames() {
+	now = Date.now();
+	console.log(now - then);
+	fps = Math.floor(frameCount/((now-then)/1000));
+	then = now; // whoa, dude
+	frameCount = 0;
 }
 
 
