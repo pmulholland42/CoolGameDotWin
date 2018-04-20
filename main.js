@@ -78,7 +78,7 @@ var timer = 0;
 function touchStart(){
   if (timer == 0){
     console.log("here");
-    var sendDig = getDigDirection();
+    var sendDig = getAnDirection();
     drone.publish({
         room: "my_game",
         message: sendDig
@@ -94,7 +94,7 @@ function touchStart(){
 var tier2=0;
 function touchMove(){
 if (tier2 == 0){
-        var sendAnal = getDigDirection();
+        var sendAnal = getAnDirection();
         drone.publish({
         room: "my_game",
         message: sendAnal
@@ -107,7 +107,17 @@ if (tier2 == 0){
 
 }//touchMove
 
+//touchEnd
+function touchEnd() {
+	drone.publish({
+		room: "my_game",
+		message: {
+			"touching" : false
+		}
+	})
+}
+
 
 
 var cont = new myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction,
-        touchStart, touchMove, touchStart);
+        touchStart, touchMove, touchEnd);

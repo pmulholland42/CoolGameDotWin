@@ -31,17 +31,15 @@ var snekman_right_up;
 var snekman_right_down;
 var snek;
 var door;
-var bg;
 
 // Adjustable values:
-var gravity = 0.7;		// Downward acceleration (pixels per 20ms^2)
-var friction = 0.7;		// Coefficient of friction on ground
+var gravity = 0.8;		// Downward acceleration (pixels per 20ms^2)
+var friction = 1.0;		// Coefficient of friction on ground
 var wallBounce = 0.0;	// Wall bounciness coefficient
-var floorBounce = 0;	// Floor bounciness coefficient
-var maxSpeed = 10;		// Max horizontal speed for the player when on ground
-var jumpSpeed = 21;		// Vertical speed to apply when jumping
+var floorBounce = 0.0;	// Floor bounciness coefficient
+var maxSpeed = 15;		// Max horizontal speed for the player when on ground
+var jumpSpeed = 23;		// Vertical speed to apply when jumping
 var floorHeight = 0; 	// Pixels above bottom of window
-var maxJumps = 2;		// Single, double, or triple jump, etc.
 var projSpeed = 15;		// Velocity of projectiles shot by player
 var projCooldown = 10;	// Number of ticks till you can shoot again
 
@@ -62,8 +60,6 @@ var platform1Height = 220;
 var platform2Height = 600;
 
 // Input variables
-var inputTimer = 0;
-var receiving = false;
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
 
 // Controller state
@@ -72,6 +68,7 @@ var yDig;
 var xAnlg;
 var yAnlg;
 var log;
+var touching;
 
 // FPS counter
 var now;
@@ -84,7 +81,6 @@ function init() {
 	setupCanvas();
 
 	// Load in all the sprites
-	document.body.style.background = "url('bg.jpg')";
 	snekman_down_right = document.createElement( 'img' );
 	snekman_down_left = document.createElement( 'img' );
 	snekman_up_right = document.createElement( 'img' );
@@ -95,7 +91,6 @@ function init() {
 	snekman_right_down = document.createElement( 'img' );
 	snek = document.createElement('img');
 	door = document.createElement('img');
-	bg = document.createElement('img');
 	snekman_down_right.src = "snekman_down_right.png";
 	snekman_down_left.src = "snekman_down_left.png";
 	snekman_up_right.src = "snekman_up_right.png";
@@ -106,7 +101,6 @@ function init() {
 	snekman_right_down.src = "snekman_right_down.png";
 	snek.src = "snekkk.png";
 	door.src = "door.png";
-	bg.src = "bg.jpg";
 	
 	// Create sneks
 	snekHead = {'health': 3, 'x': width/4, 'y': height - platform1Height, 'dir': "left", 'next': null, 'prev': null, 'time':0};
@@ -134,13 +128,14 @@ function init() {
 
 		// What happens when we receive data
 		room.on('data', function (data) {
-			inputTimer = 0;
-			receiving = true;
 			console.log(data);
 			// Record controller state
 			xDig = data.xdig;
 			yDig = data.ydig;
+			xAnlg = data.xdir;
+			yAnlg = data.ydir;
 			log = data.log;
+			touching = data.touching;
 		});
 	});
 	drone.on('error', function(error){
@@ -155,9 +150,10 @@ function init() {
 	// Calculate player physics
 	setInterval(physics, 20);
 	// Render the canvas
-	setInterval(draw, 16); // 60 FPS!!!!!
+	setInterval(draw, 1); // 60 FPS!!!!!
 	// Determine frames per second (once a second)
 	setInterval(countFrames, 1000);
+	
 }//init
 
 
@@ -166,6 +162,8 @@ function setupCanvas() {
     canvas = document.createElement( 'canvas' );
 	canvas.width = window.innerWidth;				
 	canvas.height = window.innerHeight;
+	
+	document.body.style.overflow = 'hidden'; // stackoverflow.com/questions/26745292
 	
 	// Get a CanvasRenderingContext2D on the canvas
 	c = canvas.getContext( '2d' );
@@ -202,23 +200,14 @@ document.onkeyup = function(event) {
 
 // Interpret data sent from phone controller
 function parseController() {
-	// If it's been a while since the last update, assume the player let go
-	inputTimer++;
-	// TODO: make the threshold dynamic maybe?
-	if (inputTimer > 7) {
-		receiving = false;
-		xDig = 0;
-		yDig = 0;
-		log = null;
-	}
 	
-	if (xDig > 0) {
+	if (xDig > 0 || xAnlg > 0) {
 		if (gravDir == 'down' || gravDir == 'up') {
 			moveRight();
 		} else if (gravDir == 'left') {
 			jump();
 		}
-	} else if (xDig < 0) {
+	} else if (xDig < 0 || xAnlg < 0) {
 		if (gravDir == 'down' || gravDir == 'up') {
 			moveLeft();
 		} else if (gravDir == 'right') {
@@ -227,7 +216,7 @@ function parseController() {
 		}
 	}
 	
-	if (yDig > 0) {
+	if (yDig > 0 || yAnlg > 0.5) {
 		if (gravDir == 'down') {
 			jump();
 		} else if (gravDir == 'right') {
@@ -235,7 +224,7 @@ function parseController() {
 		} else if (gravDir == 'left') {
 			moveLeft();
 		}
-	} else if (yDig < 0) {
+	} else if (yDig < 0 || yAnlg < 0.5) {
 		if (gravDir == 'down') {
 			dropDown();
 		} else if (gravDir == 'up') {
@@ -323,6 +312,9 @@ function parseKeyboard() {
 			winner = true;
 		}
 	}
+	if (heldKeys[32]) { // Spacebar
+		jump();
+	}
 }
 
 // Player movement/action functions
@@ -346,6 +338,7 @@ function moveLeft() {
 		if (playerXSpeed > -maxSpeed) {
 			playerXSpeed -= 1;
 		}
+
 	} else if (gravDir == 'right') {
 		facing = 'down';
 		if (playerYSpeed < maxSpeed) {
@@ -394,7 +387,6 @@ function dropDown() {
 function shoot() {
 	// This adds a projectile json to the linked list
 	if (projTimer == 0) {
-		
 		// Linked lists man. You either do em or you dont
 		var currProj;
 		if (facing == 'left') {
@@ -440,7 +432,7 @@ function physics() {
 	// If the player is on the ground
 	if (grounded) {
 		// Apply friction when not being moved by player
-		if (!(receiving || heldKeys[65] || heldKeys[68])) {
+		if (!(touching || heldKeys[65] || heldKeys[68])) {
 			if (playerXSpeed > 0) {
 				playerXSpeed -= friction;
 			}
@@ -599,11 +591,11 @@ function draw() {
 	
 	// Erase the current canvas
     c.clearRect(0, 0, width, height);
-	c.drawImage(bg, 0, 0, width, height);
 	c.lineWidth = "10";
 	
 	// Display stats
 	c.font="15px Verdana";
+	
 	c.fillText(fps + ' FPS', 10, 20);
 	/*
 	c.fillText('X velocity: '+playerXSpeed, 10, 40);
@@ -618,7 +610,6 @@ function draw() {
 	c.fillText('A: '+heldKeys[65], 10, 220);
 	c.fillText('S: '+heldKeys[83], 10, 240);
 	c.fillText('D: '+heldKeys[68], 10, 260);
-	c.fillText('Timer: '+ inputTimer, 10, 280);
 	*/
 	
 	frameCount++;
@@ -718,7 +709,6 @@ function draw() {
 
 function countFrames() {
 	now = Date.now();
-	console.log(now - then);
 	fps = Math.floor(frameCount/((now-then)/1000));
 	then = now; // whoa, dude
 	frameCount = 0;

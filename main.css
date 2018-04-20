@@ -4,8 +4,7 @@ canvas{
     position:absolute;
 }
 body{
-	background-image: url("bg.jpg");
-    background-repeat: repeat;
+    background-color: #999999;
 }
 .container{
     width:auto;

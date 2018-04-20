@@ -318,7 +318,7 @@ function getAnDirection(){
           ydir = 0;
       }//if checking if NaN
 
-      var analogDir = {'xdir': xdir, 'ydir': ydir};
+      var analogDir = {'xdir': xdir, 'ydir': ydir, 'touching': true};
       return analogDir;
 }//getDirection
 
@@ -353,7 +353,7 @@ function getDigDirection(){
     ydig = 0;
   }//if else for ydig
 
-  var digital = {'xdig': xdig, 'ydig': ydig};
+  var digital = {'xdig': xdig, 'ydig': ydig, 'touching': true};
 
   return digital;
 }//getDigDirection

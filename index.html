@@ -2,14 +2,16 @@
 <html>
     <head>
         <meta charset="utf-8">
+		<link rel="icon" type="image/png" href="http://coolgame.win.s3.amazonaws.com/favicon.png">
         <title>Cool game!</title>
     </head>
 
     <body onload="init()" style="overflow:auto; height:100%;">
+	<frame>
 		<script>
 		if( ! /Android|webOS|iPhone|iPod|iPad|BlackBerry/i.test(navigator.userAgent)) {
 			document.writeln('<script type = "text/javascript" src="https://cdn.scaledrone.com/scaledrone.min.js"><\/script>');
-			document.writeln('<script type="text/javascript" src="game.js?v={random number/string}"><\/script>');
+			document.writeln('<script type="text/javascript" src="game.js"><\/script>');
 			document.writeln('<link rel="stylesheet" href="game.css?v={random number/string}">');
 		} else {
 			document.writeln('<link rel="stylesheet" href="controller.css?v={random number/string}">');
@@ -19,5 +21,6 @@
 			document.writeln('<script type="text/javascript" src="main.js?v={random number/string}"><\/script>');
 		}
 		</script>
+		<frame>
     </body>
 </html>
