@@ -25,7 +25,7 @@ var graphicsTickRate = 250; // Number of times canvas is refreshed per second (m
 
 var gravity = 30; // Downward acceleration (blocks per second^2)
 var maxFallSpeed = 9; // Terminal velocity (blocks per second)
-var moveSpeed = 3.5; // Horizontal movement speed of player (blocks per second)
+var moveSpeed = 4; // Horizontal movement speed of player (blocks per second)
 
 var jumpSpeed = 9; // Vertical speed in blocks per second.
 var jumpHeight = 3; // Height in blocks. The player can jump higher than this though because gravity takes time to slow them.
@@ -53,7 +53,8 @@ var grid;
 var numBlockTypes = 2;
 var blocks = {
 	air: 0,
-	stone: 1
+	stone: 1,
+	door: 2
 }
 var winner = false;
 
@@ -190,7 +191,19 @@ function init()
 	{
 		for (var y = 0; y < gridHeight; y++)
 		{
-			grid[x][y] = 0;
+			// Hard coded level data
+			if ((x > 5 && x < 11 && y > 11) || (x > 17 && x < 23 && y > 7))
+			{
+				grid[x][y] = blocks.stone;
+			}
+			else if (x == 27 && y > 13)
+			{
+				grid[x][y] = blocks.door;
+			}
+			else
+			{
+				grid[x][y] = blocks.air;
+			}
 		}
 	}
 	
@@ -507,8 +520,8 @@ function draw()
 	canvas.width = blockSize * gridWidth;
 	canvas.height = blockSize * gridHeight;
 	
-	playerWidth = blockSize*0.4635; // Golden ratio
-	playerHeight = blockSize*0.75;
+	playerWidth = blockSize*0.49; // Golden ratio
+	playerHeight = blockSize*0.95;
 	offsetX = playerWidth/(blockSize*2);
 	offsetY = playerHeight/(blockSize*2);
 	
@@ -527,11 +540,11 @@ function draw()
 				// Change the color depending on the block type
 				if (block == blocks.stone)
 				{
-					c.fillStyle = "rgba(80, 80, 80, 1)"; // Dark gray
+					c.fillStyle = "rgba(0, 128, 0, 1)"; // Green
 				}
-				else if (block == blocks.breakable)
+				else if (block == blocks.door)
 				{
-					c.fillStyle = "rgba(175, 175, 210, 1)"; // Pale blue
+					c.fillStyle = "rgba(160, 82, 45, 1)"; // Pale blue
 				}
 				// Draw the block
 				c.fillRect(x * blockSize, y * blockSize, blockSize+1, blockSize+1);
@@ -562,29 +575,44 @@ function draw()
 	// Draw the player
 	c.fillStyle = "rgba(80, 80, 200, 1)";
 	c.fillRect(playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
-	//c.drawImage(character, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
+	var currentSprite;
+	if (gravDir == directions.down && facing == directions.right)
+	{
+		currentSprite = snekman_down_right;
+	}
+	else if (gravDir == directions.down && facing == directions.left)
+	{
+		currentSprite = snekman_down_left;
+	}
+	else if (gravDir == directions.up && facing == directions.right)
+	{
+		currentSprite = snekman_up_right;
+	}
+	else if (gravDir == directions.up && facing == directions.left)
+	{
+		currentSprite = snekman_up_left;
+	}
+	else if (gravDir == directions.left && facing == directions.down)
+	{
+		currentSprite = snekman_left_down;
+	}
+	else if (gravDir == directions.left && facing == directions.up)
+	{
+		currentSprite = snekman_left_up;
+	}
+	else if (gravDir == directions.right && facing == directions.down)
+	{
+		currentSprite = snekman_right_down;
+	}
+	else if (gravDir == directions.right && facing == directions.up)
+	{
+		currentSprite = snekman_right_up;
+	}
+
+
 	
-	c.save();
-	var xScale = 1;
-	var yScale = 1;
-	var angle = 0;
-	
-	// Flip vertically when on ceiling
-	if (gravDir == directions.up) angle = 180;
-	// Rotate 270 degrees clockwise when on the right wall
-	else if (gravDir == directions.right) angle = 270;
-	// Rotate 90 degrees clockwise when on the left wall
-	else if (gravDir == directions.left) angle = 90;
-	
-	// Flip horizontally
-	if ((facing == directions.left && gravDir == directions.down) || (facing == directions.right && gravDir == directions.up)) xScale = -1;
-	// Flip vertically
-	else if ((facing == directions.down && gravDir == directions.right) || (facing == directions.up && gravDir == directions.left)) yScale = -1;
-	
-	c.scale(xScale, yScale);
-	c.rotate(angle * Math.PI / 180);
-	c.drawImage(snekman_down_right, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
-	c.restore();
+	c.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
+
 
 	
 	if (devMode)
@@ -600,7 +628,7 @@ function draw()
 		else if (playerXSpeed < 0)
 			c.fillStyle = "red";
 		else
-			c.fillStyle = "black";
+			c.fillStyle = "white";
 		c.fillText('X velocity: ' + playerXSpeed, 10, 40);
 		c.fillText('X position: ' + playerX, 10, 60);
 		
@@ -610,7 +638,7 @@ function draw()
 		else if (playerYSpeed > 0)
 			c.fillStyle = "red";
 		else
-			c.fillStyle = "black";
+			c.fillStyle = "white";
 		c.fillText('Y velocity: ' + playerYSpeed, 10, 80);
 		c.fillText('Y position: ' + playerY, 10, 100);
 		
@@ -637,19 +665,18 @@ function draw()
 
 		
 		// Screen size
-		c.fillStyle = "black";
+		c.fillStyle = "white";
 		c.fillText('Canvas width: '+ canvas.width, 10, 230);
 		c.fillText('Window width: ' + window.innerWidth, 10, 250);
 		c.fillText('Canvas height: ' + canvas.height, 10, 270);
 		c.fillText('Window height: ' + window.innerHeight, 10, 290);
-
 	}
 }
 
 // TODO: replace these helper functions with a class based system for block types
 function isSolid(block)
 {
-	return !(block == blocks.air || block == blocks.jumpPower);
+	return block == blocks.stone;
 }
 
 
