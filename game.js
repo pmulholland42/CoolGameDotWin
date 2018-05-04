@@ -24,7 +24,7 @@ var physicsTickRate = 500; // Number of times physics is calculated per second (
 var graphicsTickRate = 250; // Number of times canvas is refreshed per second (max 1000)
 
 var gravity = 30; // Downward acceleration (blocks per second^2)
-var maxFallSpeed = 9; // Terminal velocity (blocks per second)
+var maxFallSpeed = 10; // Terminal velocity (blocks per second)
 var moveSpeed = 4; // Horizontal movement speed of player (blocks per second)
 
 var jumpSpeed = 9; // Vertical speed in blocks per second.
@@ -40,7 +40,7 @@ var directions = {
 	left: 2,
 	right: 3
 }
-var gravDir = directions.down;
+var gravityDirection = directions.down;
 var facing = directions.right;
 
 var devMode = true; // Displays stats and shows grid
@@ -96,7 +96,13 @@ var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is bein
 var controls = {
 	left: 65, // A
 	right: 68, // D
-	jump: 87, // W
+	up: 87, // W
+	down: 83, // S
+	jump: 32, // Spacebar
+	gravityUp: 38, // Up arrow
+	gravityDown: 40, // Down arrow
+	gravityLeft: 37, // Left arrow
+	gravityRight: 39, // Right arrow
 	devMode: 76 // L
 }
 
@@ -260,55 +266,54 @@ document.onkeyup = function(event)
 	// Unset this key
 	heldKeys[event.keyCode] = false;
 	
-	switch (event.keyCode)
+	if (event.keyCode == controls.jump || event.keyCode == getJumpKey())
 	{
-		case controls.jump:
-			// You can only jump again once you release the jump key and press it again
-			canJump = true;
-			// Letting go of the jump key while going up ends the jump
-			if (playerYSpeed <= 0)
-			{
-				playerYSpeed = 0;
-				jumping = false;
-				jumpTimer = 0;
-			}
-			break;
+		// You can only jump again once you release the jump key and press it again
+		canJump = true;
+		// Letting go of the jump key while going up ends the jump
+		if (playerYSpeed <= 0)
+		{
+			playerYSpeed = 0;
+			jumping = false;
+			jumpTimer = 0;
+		}
 	}
+
 }
 
 function parseController() {
 	
 	if (xDig > 0 || xAnlg > 0) {
-		if (gravDir == directions.down || gravDir == directions.up) {
+		if (gravityDirection == directions.down || gravityDirection == directions.up) {
 			moveRight();
-		} else if (gravDir == 'left') {
+		} else if (gravityDirection == 'left') {
 			jump();
 		}
 	} else if (xDig < 0 || xAnlg < 0) {
-		if (gravDir == directions.down || gravDir == directions.up) {
+		if (gravityDirection == directions.down || gravityDirection == directions.up) {
 			moveLeft();
-		} else if (gravDir == 'right') {
+		} else if (gravityDirection == 'right') {
 			console.log("jump?");
 			jump();
 		}
 	}
 	
 	if (yDig > 0 || yAnlg > 0.5) {
-		if (gravDir == directions.down) {
+		if (gravityDirection == directions.down) {
 			jump();
-		} else if (gravDir == 'right') {
+		} else if (gravityDirection == 'right') {
 			moveRight();
-		} else if (gravDir == 'left') {
+		} else if (gravityDirection == 'left') {
 			moveLeft();
 		}
 	} else if (yDig < 0 || yAnlg < 0.5) {
-		if (gravDir == directions.down) {
+		if (gravityDirection == directions.down) {
 			dropDown();
-		} else if (gravDir == directions.up) {
+		} else if (gravityDirection == directions.up) {
 			jump();
-		} else if (gravDir == 'right') {
+		} else if (gravityDirection == 'right') {
 			moveLeft();
-		} else if (gravDir == 'left') {
+		} else if (gravityDirection == 'left') {
 			moveRight();
 		}
 	}
@@ -316,13 +321,13 @@ function parseController() {
 	if (log === "tapFunction") {
 		shoot();
 	} else if (log === "swipeUFunction") {
-		gravDir = directions.up;
+		gravityDirection = directions.up;
 	} else if (log === "swipeLFunction") {
-		gravDir = 'left';
+		gravityDirection = 'left';
 	} else if (log === "swipeDFunction") {
-		gravDir = directions.down;
+		gravityDirection = directions.down;
 	} else if (log === "swipeRFunction") {
-		gravDir = 'right';
+		gravityDirection = 'right';
 	} else if (log === "doubleTapFunction") {
 		shoot();
 		if (playerX > 5*width/6 && playerY == height-floorHeight) {
@@ -339,42 +344,112 @@ function physics()
 	now = Date.now();
 	deltaT = (now - then)/1000;
 
+	// Change gravity
+	if (heldKeys[controls.gravityUp])
+	{
+		gravityDirection = directions.up;
+		facing = directions.right;
+	}
+	else if (heldKeys[controls.gravityDown])
+	{
+		gravityDirection = directions.down;
+		facing = directions.right;
+	}
+	else if (heldKeys[controls.gravityLeft])
+	{
+		gravityDirection = directions.left;
+		facing = directions.up;
+	}
+	else if (heldKeys[controls.gravityRight])
+	{
+		gravityDirection = directions.right;
+		facing = directions.up;
+	}
+	
 	// Gravity
-	if (!jumping && playerYSpeed <= maxFallSpeed) {
-		playerYSpeed += gravity * deltaT;
-		if (playerYSpeed > maxFallSpeed)
+	if (!jumping)
+	{
+		if (gravityDirection == directions.down)
 		{
-			playerYSpeed = maxFallSpeed;
+			playerYSpeed = Math.min(playerYSpeed + gravity * deltaT, maxFallSpeed);
+		}
+		else if (gravityDirection == directions.up)
+		{
+			playerYSpeed = Math.max(playerYSpeed - gravity * deltaT, -maxFallSpeed);
+		}
+		else if (gravityDirection == directions.left)
+		{
+			playerXSpeed = Math.max(playerXSpeed - gravity * deltaT, -maxFallSpeed);
+		}
+		else if (gravityDirection == directions.right)
+		{
+			playerXSpeed = Math.min(playerXSpeed + gravity * deltaT, maxFallSpeed);
 		}
 	}
 	
 	// Jump
-	if (heldKeys[controls.jump] && jumpTimer > 0 && ((canJump && grounded) || jumping)) // W or Spacebar
+	if ((heldKeys[controls.jump] || heldKeys[getJumpKey()])&& jumpTimer > 0 && ((canJump && grounded) || jumping))
 	{
 		jumpTimer -= deltaT;
 		jumping = true;
 		canJump = false;
-		playerYSpeed = -jumpSpeed;
+		if (gravityDirection == directions.down)
+		{
+			playerYSpeed = -jumpSpeed;
+		}
+		else if (gravityDirection == directions.up)
+		{
+			playerYSpeed = jumpSpeed;
+		}
+		else if (gravityDirection == directions.left)
+		{
+			playerXSpeed = jumpSpeed;
+		}
+		else if (gravityDirection == directions.right)
+		{
+			playerXSpeed = -jumpSpeed;
+		}
 	}
-	else
+	else 
 	{
 		jumping = false;
 	}
 	
-	// Movement
-	if (heldKeys[controls.left]) // A
+	// Movement on floor or ceiling
+	if (gravityDirection == directions.up || gravityDirection == directions.down)
 	{
-		playerXSpeed = -moveSpeed;
-		facing = directions.left;
+		if (heldKeys[controls.left])
+		{
+			playerXSpeed = -moveSpeed;
+			facing = directions.left;
+		}
+		else if (heldKeys[controls.right])
+		{
+			playerXSpeed = moveSpeed;
+			facing = directions.right;
+		}
+		else if (grounded)
+		{
+			playerXSpeed = 0;
+		}
 	}
-	else if (heldKeys[controls.right]) // D
-	{
-		playerXSpeed = moveSpeed;
-		facing = directions.right;
-	}
+	// Movement on walls
 	else
 	{
-		playerXSpeed = 0;
+		if (heldKeys[controls.up])
+		{
+			playerYSpeed = -moveSpeed;
+			facing = directions.up;
+		}
+		else if (heldKeys[controls.down])
+		{
+			playerYSpeed = moveSpeed;
+			facing = directions.down;
+		}
+		else if (grounded)
+		{
+			playerYSpeed = 0;
+		}
 	}
 
 	// Move the player based on their current velocity.
@@ -432,33 +507,82 @@ function physics()
 		if (pBlockX >= 0 && pBlockX < gridWidth && pBlockY >= 0 && pBlockY < gridHeight)
 		{	
 			// Check if it is a solid block
-			if (isSolid(grid[pBlockX][pBlockY]))
+			if (grid[pBlockX][pBlockY] == blocks.stone)
 			{
 				// If we are in a solid block, it's a collision
 				// Check if we are colliding with the side or top/bottom of the block
-				if (Math.floor(playerLastY+offsetY) == pBlockY && playerLastY+offsetY != pBlockY)
+				if (Math.floor(playerLastY + offsetY) == pBlockY && playerLastY + offsetY != pBlockY)
 				{
 					// Colliding with the side
 					playerX = pBlockX + adjustX - offsetX;
 					playerXSpeed = 0;
+					
+					if (gravityDirection == directions.left)
+					{
+						if (corner == 2 || corner == 3)
+						{
+							// If one of the left corners is colliding then the player is on a surface
+							grounded = true;
+							jumpTimer = maxJumpTime;
+						}
+						else
+						{
+							// If one of the right corners is colliding then the player is hitting their head on a block
+							jumping = false;
+							jumpTimer = 0;
+						}
+					}
+					else if (gravityDirection == directions.right)
+					{
+						if (corner == 0 || corner == 1)
+						{
+							// If one of the right corners is colliding then the player is on a surface
+							grounded = true;
+							jumpTimer = maxJumpTime;
+						}
+						else
+						{
+							// If one of the left corners is colliding then the player is hitting their head on a block
+							jumping = false;
+							jumpTimer = 0;
+						}
+					}
 				} 
-				else if (Math.floor(playerLastX+offsetX) == pBlockX && playerLastX+offsetX!= pBlockX)
+				else if (Math.floor(playerLastX + offsetX) == pBlockX && playerLastX + offsetX != pBlockX)
 				{
 					// Colliding with the top or bottom
 					playerY = pBlockY + adjustY - offsetY;
 					playerYSpeed = 0;
 					
-					if (corner == 0 || corner == 3)
+					if (gravityDirection == directions.down)
 					{
-						// If one of the bottom corners is colliding then the player is on a surface
-						grounded = true;
-						jumpTimer = maxJumpTime;
+						if (corner == 0 || corner == 3)
+						{
+							// If one of the bottom corners is colliding then the player is on a surface
+							grounded = true;
+							jumpTimer = maxJumpTime;
+						}
+						else
+						{
+							// If one of the top corners is colliding then the player is hitting their head on a block
+							jumping = false;
+							jumpTimer = 0;
+						}
 					}
-					else
+					else if (gravityDirection == directions.up)
 					{
-						// If one of the top corners is colliding then the player is hitting their head on a block
-						jumping = false;
-						jumpTimer = 0;
+						if (corner == 1 || corner == 2)
+						{
+							// If one of the top corners is colliding then the player is on a surface
+							grounded = true;
+							jumpTimer = maxJumpTime;
+						}
+						else
+						{
+							// If one of the bottom corners is colliding then the player is hitting their head on a block
+							jumping = false;
+							jumpTimer = 0;
+						}
 					}
 				}
 			}
@@ -470,28 +594,64 @@ function physics()
 			{
 				playerY = -offsetY;
 				playerYSpeed = 0;
-				jumping = false;
-				jumpTimer = 0;
+				if (gravityDirection == directions.up)
+				{
+					grounded = true;
+					jumpTimer = maxJumpTime;
+				}
+				else if (gravityDirection == directions.down)
+				{
+					jumping = false;
+					jumpTimer = 0;
+				}
 			}
 			// Ground collision detection
 			else if (playerY + offsetY > gridHeight)
 			{
 				playerY = gridHeight - offsetY;
 				playerYSpeed = 0;
-				grounded = true;
-				jumpTimer = maxJumpTime;
+				if (gravityDirection == directions.down)
+				{
+					grounded = true;
+					jumpTimer = maxJumpTime;
+				}
+				else if (gravityDirection == directions.up)
+				{
+					jumping = false;
+					jumpTimer = 0;
+				}
 			}	
 			// Left wall collision detection
 			if (playerX + offsetX < 0)
 			{
 				playerX = -offsetX;
 				playerXSpeed = 0;
+				if (gravityDirection == directions.left)
+				{
+					grounded = true;
+					jumpTimer = maxJumpTime;
+				}
+				else if (gravityDirection == directions.right)
+				{
+					jumping = false;
+					jumpTimer = 0;
+				}
 			}
 			// Right wall collision detection
 			else if (playerX + offsetX > gridWidth)
 			{
 				playerX = gridWidth - offsetX;
 				playerXSpeed = 0; 
+				if (gravityDirection == directions.right)
+				{
+					grounded = true;
+					jumpTimer = maxJumpTime;
+				}
+				else if (gravityDirection == directions.down)
+				{
+					jumping = false;
+					jumpTimer = 0;
+				}
 			}
 		}
 	}
@@ -520,13 +680,22 @@ function draw()
 	canvas.width = blockSize * gridWidth;
 	canvas.height = blockSize * gridHeight;
 	
-	playerWidth = blockSize*0.49; // Golden ratio
-	playerHeight = blockSize*0.95;
+	if (gravityDirection == directions.down || gravityDirection == directions.up)
+	{
+		playerWidth = blockSize*0.49;
+		playerHeight = blockSize*0.95;
+	}
+	else 
+	{
+		playerWidth = blockSize*0.95;
+		playerHeight = blockSize*0.49;
+	}		
+		
 	offsetX = playerWidth/(blockSize*2);
 	offsetY = playerHeight/(blockSize*2);
 	
 	// Draw the background
-	c.fillStyle = "rgba(255, 255, 255, 1)";
+	//c.fillStyle = "rgba(200, 200, 200, 1)";
 	//c.fillRect(0, 0, canvas.width, canvas.height);
 	
 	// Draw the blocks
@@ -573,45 +742,53 @@ function draw()
 	}
 	
 	// Draw the player
-	c.fillStyle = "rgba(80, 80, 200, 1)";
-	c.fillRect(playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
+	if (devMode)
+	{
+		c.fillStyle = "rgba(80, 80, 200, 1)";
+		c.fillRect(playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
+	}
 	var currentSprite;
-	if (gravDir == directions.down && facing == directions.right)
+	if (gravityDirection == directions.down && facing == directions.right)
 	{
 		currentSprite = snekman_down_right;
 	}
-	else if (gravDir == directions.down && facing == directions.left)
+	else if (gravityDirection == directions.down && facing == directions.left)
 	{
 		currentSprite = snekman_down_left;
 	}
-	else if (gravDir == directions.up && facing == directions.right)
+	else if (gravityDirection == directions.up && facing == directions.right)
 	{
 		currentSprite = snekman_up_right;
 	}
-	else if (gravDir == directions.up && facing == directions.left)
+	else if (gravityDirection == directions.up && facing == directions.left)
 	{
 		currentSprite = snekman_up_left;
 	}
-	else if (gravDir == directions.left && facing == directions.down)
+	else if (gravityDirection == directions.left && facing == directions.down)
 	{
 		currentSprite = snekman_left_down;
 	}
-	else if (gravDir == directions.left && facing == directions.up)
+	else if (gravityDirection == directions.left && facing == directions.up)
 	{
 		currentSprite = snekman_left_up;
 	}
-	else if (gravDir == directions.right && facing == directions.down)
+	else if (gravityDirection == directions.right && facing == directions.down)
 	{
 		currentSprite = snekman_right_down;
 	}
-	else if (gravDir == directions.right && facing == directions.up)
+	else if (gravityDirection == directions.right && facing == directions.up)
 	{
 		currentSprite = snekman_right_up;
 	}
-
-
 	
-	c.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
+	if (gravityDirection == directions.down || gravityDirection == directions.up)
+	{
+		c.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
+	}
+	else
+	{
+		c.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*.75, playerWidth, playerHeight*1.5);
+	}
 
 
 	
@@ -673,11 +850,30 @@ function draw()
 	}
 }
 
-// TODO: replace these helper functions with a class based system for block types
-function isSolid(block)
+function getJumpKey()
 {
-	return block == blocks.stone;
+	if (gravityDirection == directions.down)
+	{
+		return controls.up;
+	}
+	else if (gravityDirection == directions.up)
+	{
+		return controls.down;
+	}
+	else if (gravityDirection == directions.left)
+	{
+		return controls.right;
+	}
+	else 
+	{
+		return controls.left;
+	}
 }
+
+
+
+
+
 
 
 
