@@ -41,6 +41,7 @@ var directions = {
 	right: 3
 }
 var gravDir = directions.down;
+var facing = directions.right;
 
 var devMode = true; // Displays stats and shows grid
 
@@ -225,9 +226,6 @@ function setupCanvas()
 	container.appendChild(canvas);
 	// Put the container on the page
 	document.body.appendChild(container);
-	
-	// Set up click listender on the canvas
-	canvas.addEventListener('click', editBlock, false);
 }
 
 // Called when a key is held down
@@ -354,10 +352,12 @@ function physics()
 	if (heldKeys[controls.left]) // A
 	{
 		playerXSpeed = -moveSpeed;
+		facing = directions.left;
 	}
 	else if (heldKeys[controls.right]) // D
 	{
 		playerXSpeed = moveSpeed;
+		facing = directions.right;
 	}
 	else
 	{
@@ -449,12 +449,6 @@ function physics()
 					}
 				}
 			}
-			// Check if it is a power up
-			if (isPowerUp(grid[pBlockX][pBlockY]))
-			{
-				power = blockToPower(grid[pBlockX][pBlockY]);
-				grid[pBlockX][pBlockY] = blocks.air;
-			}
 		}
 		else
 		{
@@ -520,7 +514,7 @@ function draw()
 	
 	// Draw the background
 	c.fillStyle = "rgba(255, 255, 255, 1)";
-	c.fillRect(0, 0, canvas.width, canvas.height);
+	//c.fillRect(0, 0, canvas.width, canvas.height);
 	
 	// Draw the blocks
 	for (var x = 0; x < gridWidth; x++)
@@ -568,7 +562,30 @@ function draw()
 	// Draw the player
 	c.fillStyle = "rgba(80, 80, 200, 1)";
 	c.fillRect(playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
-	c.drawImage(character, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
+	//c.drawImage(character, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
+	
+	c.save();
+	var xScale = 1;
+	var yScale = 1;
+	var angle = 0;
+	
+	// Flip vertically when on ceiling
+	if (gravDir == directions.up) angle = 180;
+	// Rotate 270 degrees clockwise when on the right wall
+	else if (gravDir == directions.right) angle = 270;
+	// Rotate 90 degrees clockwise when on the left wall
+	else if (gravDir == directions.left) angle = 90;
+	
+	// Flip horizontally
+	if ((facing == directions.left && gravDir == directions.down) || (facing == directions.right && gravDir == directions.up)) xScale = -1;
+	// Flip vertically
+	else if ((facing == directions.down && gravDir == directions.right) || (facing == directions.up && gravDir == directions.left)) yScale = -1;
+	
+	c.scale(xScale, yScale);
+	c.rotate(angle * Math.PI / 180);
+	c.drawImage(snekman_down_right, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
+	c.restore();
+
 	
 	if (devMode)
 	{
@@ -617,11 +634,7 @@ function draw()
 		else
 			c.fillStyle = "red";
 		c.fillText('Can Jump: '+ canJump, 10, 170);
-		
-		// Power-up
-		if (power != powers.none) c.fillStyle = "green";
-		else c.fillStyle = "red";
-		c.fillText('Power: '+ power, 10, 190);
+
 		
 		// Screen size
 		c.fillStyle = "black";
