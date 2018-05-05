@@ -33,6 +33,7 @@ var jumpTimer = 0; // Used to track how long the player is jumping.
 var maxJumpTime = jumpHeight/jumpSpeed; // How long the player can go up (seconds) before gravity starts working on them.
 var jumping = false;
 var canJump = true;
+var airResistance = false; // Should the player stop moving horizontally in the air when the player is not moving? This gets toggled when jumping.
 
 var directions = {
 	down: 0,
@@ -267,6 +268,8 @@ document.onkeyup = function(event)
 	{
 		// You can only jump again once you release the jump key and press it again
 		canJump = true;
+		// Horizontal movement is stopped temporarily (unless the player holds left or right)
+		airResistance = true;
 		// Letting go of the jump key while going up ends the jump
 		if (playerYSpeed <= 0)
 		{
@@ -343,25 +346,29 @@ function physics()
 	deltaT = (now - then)/1000;
 
 	// Change gravity
-	if (heldKeys[controls.gravityUp])
+	if (heldKeys[controls.gravityUp] && gravityDirection != directions.up)
 	{
 		gravityDirection = directions.up;
 		facing = directions.right;
+		airResistance = false;
 	}
-	else if (heldKeys[controls.gravityDown])
+	else if (heldKeys[controls.gravityDown] && gravityDirection != directions.down)
 	{
 		gravityDirection = directions.down;
 		facing = directions.right;
+		airResistance = false;
 	}
-	else if (heldKeys[controls.gravityLeft])
+	else if (heldKeys[controls.gravityLeft] && gravityDirection != directions.left)
 	{
 		gravityDirection = directions.left;
 		facing = directions.up;
+		airResistance = false;
 	}
-	else if (heldKeys[controls.gravityRight])
+	else if (heldKeys[controls.gravityRight] && gravityDirection != directions.right)
 	{
 		gravityDirection = directions.right;
 		facing = directions.up;
+		airResistance = false;
 	}
 	
 	// Gravity
@@ -426,7 +433,7 @@ function physics()
 			playerXSpeed = moveSpeed;
 			facing = directions.right;
 		}
-		else if (grounded)
+		else if (grounded || airResistance)
 		{
 			playerXSpeed = 0;
 		}
@@ -444,7 +451,7 @@ function physics()
 			playerYSpeed = moveSpeed;
 			facing = directions.down;
 		}
-		else if (grounded)
+		else if (grounded || airResistance)
 		{
 			playerYSpeed = 0;
 		}
@@ -837,6 +844,13 @@ function draw()
 		else
 			c.fillStyle = "red";
 		c.fillText('Can Jump: '+ canJump, 10, 170);
+		
+		// Air Resistance
+		if (airResistance)
+			c.fillStyle = "green";
+		else
+			c.fillStyle = "red";
+		c.fillText('Air resistance: '+ airResistance, 10, 190);
 
 		
 		// Screen size
