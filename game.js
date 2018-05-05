@@ -18,6 +18,7 @@ var adjustX;
 var adjustY;
 var offsetX; // Half of player width
 var offsetY;
+var precisionFactor = 0.000001; // Used for correcting floating point errors
 
 // Adjustable values:
 var physicsTickRate = 500; // Number of times physics is calculated per second (max 1000)
@@ -219,7 +220,6 @@ function loadLevel()
         for (var j = 0; j < gridWidth; j++)
 		{
 			grid[j][i] = parseInt(curLine.charAt(j));
-			console.log(i);
 		}
     }
 }
@@ -372,7 +372,7 @@ function physics()
 	}
 	
 	// Gravity
-	if (!jumping)
+	if (!jumping && !grounded)
 	{
 		if (gravityDirection == directions.down)
 		{
@@ -520,7 +520,7 @@ function physics()
 			{
 				// If we are in a solid block, it's a collision
 				// Check if we are colliding with the side or top/bottom of the block
-				if (Math.floor(playerLastY + offsetY) == pBlockY && playerLastY + offsetY != pBlockY)
+				if (Math.floor(playerLastY + offsetY + precisionFactor) == pBlockY && playerLastY + offsetY != pBlockY)
 				{
 					// Colliding with the side
 					playerX = pBlockX + adjustX - offsetX;
@@ -557,7 +557,7 @@ function physics()
 						}
 					}
 				} 
-				else if (Math.floor(playerLastX + offsetX) == pBlockX && playerLastX + offsetX != pBlockX)
+				else if (Math.floor(playerLastX + offsetX + precisionFactor) == pBlockX && playerLastX + offsetX != pBlockX)
 				{
 					// Colliding with the top or bottom
 					playerY = pBlockY + adjustY - offsetY;
