@@ -24,7 +24,7 @@ var physicsTickRate = 500; // Number of times physics is calculated per second (
 var graphicsTickRate = 250; // Number of times canvas is refreshed per second (max 1000)
 
 var gravity = 30; // Downward acceleration (blocks per second^2)
-var maxFallSpeed = 10; // Terminal velocity (blocks per second)
+var maxFallSpeed = 12; // Terminal velocity (blocks per second)
 var moveSpeed = 4; // Horizontal movement speed of player (blocks per second)
 
 var jumpSpeed = 9; // Vertical speed in blocks per second.
@@ -43,7 +43,7 @@ var directions = {
 var gravityDirection = directions.down;
 var facing = directions.right;
 
-var devMode = true; // Displays stats and shows grid
+var devMode = false; // Displays stats and shows grid
 
 // Level data
 var gridWidth = 32;
@@ -191,33 +191,11 @@ function init()
 	});
 
 	
-	// Editor array 32*16
-	grid = createArray(gridWidth, gridHeight);
-	for (var x = 0; x < gridWidth; x++)
-	{
-		for (var y = 0; y < gridHeight; y++)
-		{
-			// Hard coded level data
-			if ((x > 5 && x < 11 && y > 11) || (x > 17 && x < 23 && y > 7))
-			{
-				grid[x][y] = blocks.stone;
-			}
-			else if (x == 27 && y > 13)
-			{
-				grid[x][y] = blocks.door;
-			}
-			else
-			{
-				grid[x][y] = blocks.air;
-			}
-		}
-	}
-	
 	character = document.createElement( 'img' );
 	character.src = "sprites/character.png";
 	
-	playerX = 5;
-	playerY = 5;
+	playerX = 2;
+	playerY = 12;
 	
 	// Render the canvas
 	draw();
@@ -225,6 +203,25 @@ function init()
 	setInterval(physics, 1000/physicsTickRate);
 }
 
+function loadLevel()
+{
+	// Editor array 32*16
+	grid = createArray(gridWidth, gridHeight);
+    var oFrame = document.getElementById("level1");
+    var strRawContents = oFrame.contentWindow.document.body.childNodes[0].innerHTML;
+    while (strRawContents.indexOf("\r") >= 0)
+        strRawContents = strRawContents.replace("\r", "");
+    var arrLines = strRawContents.split("\n");
+    for (var i = 0; i < arrLines.length; i++)
+	{
+        var curLine = arrLines[i];
+        for (var j = 0; j < gridWidth; j++)
+		{
+			grid[j][i] = parseInt(curLine.charAt(j));
+			console.log(i);
+		}
+    }
+}
 
 function setupCanvas()
 {
@@ -280,6 +277,7 @@ document.onkeyup = function(event)
 	}
 
 }
+
 
 function parseController() {
 	
@@ -471,28 +469,32 @@ function physics()
 		// When we reset the player position, we want to put it next to the side it collided with, so we may have to add 1 to the block coordinate
 		
 		// Bottom right corner
-		if (corner == 0) {
+		if (corner == 0)
+		{
 			offsetX = playerWidth/(blockSize*2);
 			offsetY = playerHeight/(blockSize*2);
 			adjustX = 0;
 			adjustY = 0;
 		}
 		// Top right corner
-		else if (corner == 1) {
+		else if (corner == 1)
+		{
 			offsetX = playerWidth/(blockSize*2);
 			offsetY = -playerHeight/(blockSize*2);
 			adjustX = 0;
 			adjustY = 1;
 		} 
 		// Top left corner
-		else if (corner == 2) {
+		else if (corner == 2)
+		{
 			offsetX = -playerWidth/(blockSize*2);
 			offsetY = -playerHeight/(blockSize*2);
 			adjustX = 1;
 			adjustY = 1;
 		}
 		// Bottom left corner
-		else if (corner == 3) {
+		else if (corner == 3)
+		{
 			offsetX = -playerWidth/(blockSize*2);
 			offsetY = playerHeight/(blockSize*2);
 			adjustX = 1;
@@ -694,10 +696,6 @@ function draw()
 	offsetX = playerWidth/(blockSize*2);
 	offsetY = playerHeight/(blockSize*2);
 	
-	// Draw the background
-	//c.fillStyle = "rgba(200, 200, 200, 1)";
-	//c.fillRect(0, 0, canvas.width, canvas.height);
-	
 	// Draw the blocks
 	for (var x = 0; x < gridWidth; x++)
 	{
@@ -713,7 +711,7 @@ function draw()
 				}
 				else if (block == blocks.door)
 				{
-					c.fillStyle = "rgba(160, 82, 45, 1)"; // Pale blue
+					c.fillStyle = "rgba(80, 45, 30, 1)"; // Brown
 				}
 				// Draw the block
 				c.fillRect(x * blockSize, y * blockSize, blockSize+1, blockSize+1);
