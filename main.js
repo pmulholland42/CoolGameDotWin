@@ -1,4 +1,108 @@
 
+
+var signalingServer = "ws://18.233.98.225:8080";
+var peerConnection; // WebRTC connection to the controller
+initializeConnection();
+
+// WebRTC
+function initializeConnection()
+{	
+	// Connect to the signaling server
+	console.log("Connecting to signaling server...");
+	const serverConnection = new WebSocket(signalingServer);
+	serverConnection.onmessage = gotMessageFromServer;
+	serverConnection.addEventListener('open', function (event)
+	{
+		console.log("Connection opened.");
+		
+		// Initialize WebRTC connection
+		var configuration = {'iceServers': [{'urls': 'stun:stun.services.mozilla.com'}, {'urls': 'stun:stun.l.google.com:19302'}]};
+		peerConnection = new RTCPeerConnection(configuration);
+		peerConnection.ondatachannel = gotDataChannel;
+		peerConnection.onicecandidate = gotIceCandidate;	
+		function gotIceCandidate(event)
+		{
+			if(event.candidate != null)
+			{
+				serverConnection.send(JSON.stringify({'ice': event.candidate}));
+			}
+		}	
+		console.log("Waiting for offer from desktop...");
+	});
+	
+	function gotMessageFromServer(message)
+	{
+		var signal = JSON.parse(message.data);
+		if(signal.sdp)// && !peerConnection.remoteDescription)
+		{
+			peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function() {
+				if(signal.sdp.type == 'offer')
+				{
+					// Here we get an offer from the desktop via the server
+					console.log("Received offer. Creating answer...");
+					peerConnection.createAnswer().then(answerSuccess, answerError);
+				}
+			});
+		}
+		else if(signal.ice)
+		{
+			peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
+		}
+	}
+	
+	function answerSuccess(description)
+	{
+		// Send the answer to the desktop via the signaling server
+		console.log("Answer created. Sending answer...");
+		serverConnection.send(JSON.stringify({'sdp': description}));
+		peerConnection.setLocalDescription(description).then(localDescriptionSuccess, localDescriptionError);
+	}
+	function answerError(error)
+	{
+		console.log("Error creating answer:", error);
+	}
+	
+	function localDescriptionSuccess()
+	{
+		console.log("Successfully set local description.");
+		//serverConnection.onmessage = gotMessageFromServer;
+		console.log("Local description:", peerConnection.localDescription);
+		console.log("Remote description:", peerConnection.remoteDescription);
+	}
+	function localDescriptionError(error)
+	{
+		console.log("Error setting local description:", error);
+	}
+	
+	function gotDataChannel(event)
+	{
+		// Data channel has been opened by the desktop
+		console.log("Data channel has been opened by the desktop.");
+		var dataChannel = event.channel;
+		dataChannel.onmessage = gotMessageFromDesktop;
+		dataChannel.send("Hello desktop!");
+	}
+	
+	function gotMessageFromDesktop(event)
+	{
+		console.log("Message from desktop:", event.data);
+	}
+}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+/*
+
 //init pubnub
 var calls = 0;
 
@@ -120,4 +224,4 @@ function touchEnd() {
 
 
 var cont = new myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction,
-        touchStart, touchMove, touchEnd);
+        touchStart, touchMove, touchEnd);*/

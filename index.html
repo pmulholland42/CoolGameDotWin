@@ -7,21 +7,21 @@
     </head>
 
     <body onload="init()" style="overflow:auto; height:100%;">
-	<frame>
-		<script>
-		if( ! /Android|webOS|iPhone|iPod|iPad|BlackBerry/i.test(navigator.userAgent)) {
-			document.writeln('<script type = "text/javascript" src="https://cdn.scaledrone.com/scaledrone.min.js"><\/script>');
-			document.writeln('<script type="text/javascript" src="game.js"><\/script>');
-			document.writeln('<link rel="stylesheet" href="game.css?v={random number/string}">');
-			document.writeln('<iframe id="level1" src="lvl1.txt" onload="loadLevel();" style="display: none;"></iframe>');
-		} else {
-			document.writeln('<link rel="stylesheet" href="controller.css?v={random number/string}">');
-			document.writeln('<script type = "text/javascript" src="https://cdn.scaledrone.com/scaledrone.min.js"><\/script>');
-			document.writeln('<script type="text/javascript" src="http://hammerjs.github.io/dist/hammer.min.js"><\/script>');
-			document.writeln('<script type="text/javascript" src="myjoystick.js?v={random number/string}"><\/script>');
-			document.writeln('<script type="text/javascript" src="main.js?v={random number/string}"><\/script>');
-		}
-		</script>
 		<frame>
+			<script>
+			if( ! /Android|webOS|iPhone|iPod|iPad|BlackBerry/i.test(navigator.userAgent)) {
+				document.writeln('<script type = "text/javascript" src="https://cdn.scaledrone.com/scaledrone.min.js"><\/script>');
+				document.writeln('<script type="text/javascript" src="game.js"><\/script>');
+				document.writeln('<link rel="stylesheet" href="game.css?v={random number/string}">');
+				document.writeln('<iframe id="level1" src="lvl1.txt" onload="loadLevel();" style="display: none;"></iframe>');
+			} else {
+				document.writeln('<link rel="stylesheet" href="controller.css?v={random number/string}">');
+				document.writeln('<script type = "text/javascript" src="https://cdn.scaledrone.com/scaledrone.min.js"><\/script>');
+				document.writeln('<script type="text/javascript" src="http://hammerjs.github.io/dist/hammer.min.js"><\/script>');
+				document.writeln('<script type="text/javascript" src="myjoystick.js?v={random number/string}"><\/script>');
+				document.writeln('<script type="text/javascript" src="main.js?v={random number/string}"><\/script>');
+			}
+			</script>
+		</frame>
     </body>
 </html>

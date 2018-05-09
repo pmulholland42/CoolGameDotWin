@@ -1,3 +1,5 @@
+'use strict';
+
 // Page variables
 var canvas; 			// <canvas> HTML tag
 var c;					// Canvas rendering context
@@ -82,10 +84,12 @@ var snekman_left_up;
 var snekman_left_down;
 var snekman_right_up;
 var snekman_right_down;
-var snek;
-var door;
 
 // Controller state
+var signalingServer = "ws://18.233.98.225:8080";
+var peerConnection; // WebRTC connection to the controller
+var dataChannel; // Communicates with the controller
+var offer;
 var xDig;
 var yDig;
 var xAnlg;
@@ -113,6 +117,7 @@ var now = Date.now();
 var then = now;
 var deltaT;
 
+
 if (window.innerWidth/gridWidth > window.innerHeight/gridHeight) blockSize = window.innerHeight/gridHeight;
 else blockSize = window.innerWidth/gridWidth;
 
@@ -133,7 +138,7 @@ function createArray(length)
 function init()
 {
 	// Initialize the canvas
-	console.log("Initializing...");
+	console.log("Initializing canvas...");
 	setupCanvas();
 	
 	// Load in all the sprites
@@ -143,10 +148,8 @@ function init()
 	snekman_up_left = document.createElement( 'img' );
 	snekman_left_up = document.createElement( 'img' );
 	snekman_left_down = document.createElement( 'img' );
-	snekman_right_up= document.createElement( 'img' ); 
+	snekman_right_up = document.createElement( 'img' ); 
 	snekman_right_down = document.createElement( 'img' );
-	snek = document.createElement('img');
-	door = document.createElement('img');
 	snekman_down_right.src = "sprites/snekman_down_right.png";
 	snekman_down_left.src = "sprites/snekman_down_left.png";
 	snekman_up_right.src = "sprites/snekman_up_right.png";
@@ -155,46 +158,6 @@ function init()
 	snekman_left_down.src = "sprites/snekman_left_down.png";
 	snekman_right_up.src = "sprites/snekman_right_up.png";
 	snekman_right_down.src = "sprites/snekman_right_down.png";
-	snek.src = "sprites/snekkk.png";
-	door.src = "sprites/door.png";
-	
-	// Set up ScaleDrone for controller communication
-	var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');
-	drone.on('open', function (error) {
-		if (error) {
-			return console.error(error);
-		}
-		
-		var room = drone.subscribe('my_game');
-
-		// What happens when the connection is made
-		room.on('open', function (error) {
-			if (error) {
-				console.error(error);
-			} else {
-				console.log('Connected to room');
-			}
-		});
-
-		// What happens when we receive data
-		room.on('data', function (data) {
-			console.log(data);
-			// Record controller state
-			xDig = data.xdig;
-			yDig = data.ydig;
-			xAnlg = data.xdir;
-			yAnlg = data.ydir;
-			log = data.log;
-			touching = data.touching;
-		});
-	});
-	drone.on('error', function(error){
-		console.log(error);
-	});
-
-	
-	character = document.createElement( 'img' );
-	character.src = "sprites/character.png";
 	
 	playerX = 2;
 	playerY = 12;
@@ -203,7 +166,113 @@ function init()
 	draw();
 	setInterval(draw, 1000/graphicsTickRate);
 	setInterval(physics, 1000/physicsTickRate);
+	
+	// Connect to the controller
+	initializeConnection();
 }
+
+
+// WebRTC
+function initializeConnection()
+{	
+	// Connect to the signaling server
+	console.log("Connecting to signaling server...");
+	const serverConnection = new WebSocket(signalingServer);
+
+	serverConnection.addEventListener('open', function (event)
+	{
+		console.log("Connection opened.");
+		
+		// Initialize WebRTC connection
+		var configuration = {'iceServers': [{'urls': 'stun:stun.services.mozilla.com'}, {'urls': 'stun:stun.l.google.com:19302'}]};
+		peerConnection = new RTCPeerConnection(configuration);
+		peerConnection.onicecandidate = gotIceCandidate;	
+		function gotIceCandidate(event)
+		{
+			if(event.candidate != null)
+			{
+				serverConnection.send(JSON.stringify({'ice': event.candidate}));
+			}
+		}
+
+		// Create an offer to send to the phone controller
+		console.log("Creating offer...");
+		var offerOptions = 
+		{
+			offerToReceiveAudio: 1,
+			offerToReceiveVideo: 1,
+			iceRestart: false,
+			voiceActivityDetection: false
+		};
+		offer = peerConnection.createOffer(offerOptions);
+		offer.then(offerSuccess, offerError);
+		
+		function offerSuccess(description)
+		{
+			// Send the offer to the phone via the signaling server
+			console.log("Offer created. Sending offer...");
+			serverConnection.send(JSON.stringify({'sdp': description}));
+			peerConnection.setLocalDescription(description).then(localDescriptionSuccess, localDescriptionError);
+		}
+		function offerError(error)
+		{
+			console.log("Error creating offer:", error);
+		}
+	});
+		
+	function localDescriptionSuccess()
+	{
+		console.log("Successfully set local description.");
+		serverConnection.onmessage = gotMessageFromServer;
+	}
+	function localDescriptionError(error)
+	{
+		console.log("Error setting local description:", error);
+	}
+		
+	function gotMessageFromServer(message)
+	{
+		var signal = JSON.parse(message.data);
+		if(signal.sdp && signal.sdp.type == 'answer')
+		{
+			// Here we get an answer back from the phone via the server
+			console.log("Received answer from phone controller.");
+			peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(openDataChannel);
+		}
+		else if(signal.ice)
+		{
+			peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
+		}
+	}
+	
+	function openDataChannel()
+	{
+		console.log("Local description:", peerConnection.localDescription);
+		console.log("Remote description:", peerConnection.remoteDescription);
+		// Open the data channel for communications
+		console.log("Opening data channel with phone...");
+		dataChannel = peerConnection.createDataChannel("controller");
+		dataChannel.onopen = sendData;
+		dataChannel.onmessage = onControllerInput;
+	}
+	
+	function sendData(event)
+	{
+		console.log("Saying hello to the phone");
+		dataChannel.send("Hello phone controller!");
+	}
+	
+	function onControllerInput(event)
+	{
+		console.log("Message from phone:", event.data);
+	}
+}
+
+
+
+
+
+
 
 function loadLevel()
 {
@@ -509,8 +578,8 @@ function physics()
 		}
 		
 		// Determine what block this corner is in
-		pBlockX = Math.floor(playerX + offsetX);
-		pBlockY = Math.floor(playerY + offsetY);
+		var pBlockX = Math.floor(playerX + offsetX);
+		var pBlockY = Math.floor(playerY + offsetY);
 		
 		// Make sure it's inbounds
 		if (pBlockX >= 0 && pBlockX < gridWidth && pBlockY >= 0 && pBlockY < gridHeight)
