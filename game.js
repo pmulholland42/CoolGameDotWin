@@ -89,6 +89,10 @@ var snekman_right_down;
 var signalingServer = "ws://18.233.98.225:8080";
 var peerConnection; // WebRTC connection to the controller
 var dataChannel; // Communicates with the controller
+var remoteDescriptionSet = false;
+var qrCodeDiv = document.getElementById("qrcode");
+var qrCode;
+var UUID;
 var offer;
 var xDig;
 var yDig;
@@ -168,111 +172,116 @@ function init()
 	setInterval(physics, 1000/physicsTickRate);
 	
 	// Connect to the controller
-	initializeConnection();
+	//initializeConnection();
 }
 
-
-// WebRTC
+initializeConnection();
 function initializeConnection()
-{	
+{
+	var uuid = createUUID();
+	console.log("UUID: " + uuid);
+	var controllerURL = "coolgame.win/controller.html?id=" + uuid;
+	console.log("Controller: " + controllerURL);
+	qrCode = new QRCode(qrCodeDiv, controllerURL);
+	
 	// Connect to the signaling server
 	console.log("Connecting to signaling server...");
 	const serverConnection = new WebSocket(signalingServer);
-
 	serverConnection.addEventListener('open', function (event)
 	{
 		console.log("Connection opened.");
 		
 		// Initialize WebRTC connection
-		var configuration = {'iceServers': [{'urls': 'stun:stun.services.mozilla.com'}, {'urls': 'stun:stun.l.google.com:19302'}]};
+		var configuration = {'iceServers': [{'urls': 'stun:stun.stunprotocol.org:3478'}, {'urls': 'stun:stun.l.google.com:19302'},]};
 		peerConnection = new RTCPeerConnection(configuration);
+		peerConnection.ondatachannel = gotDataChannel;
 		peerConnection.onicecandidate = gotIceCandidate;	
 		function gotIceCandidate(event)
 		{
 			if(event.candidate != null)
 			{
-				serverConnection.send(JSON.stringify({'ice': event.candidate}));
+				serverConnection.send(JSON.stringify({'ice': event.candidate, 'uuid': uuid}));
 			}
 		}
-
-		// Create an offer to send to the phone controller
-		console.log("Creating offer...");
-		var offerOptions = 
-		{
-			offerToReceiveAudio: 1,
-			offerToReceiveVideo: 1,
-			iceRestart: false,
-			voiceActivityDetection: false
-		};
-		offer = peerConnection.createOffer(offerOptions);
-		offer.then(offerSuccess, offerError);
-		
-		function offerSuccess(description)
-		{
-			// Send the offer to the phone via the signaling server
-			console.log("Offer created. Sending offer...");
-			serverConnection.send(JSON.stringify({'sdp': description}));
-			peerConnection.setLocalDescription(description).then(localDescriptionSuccess, localDescriptionError);
-		}
-		function offerError(error)
-		{
-			console.log("Error creating offer:", error);
-		}
-	});
-		
-	function localDescriptionSuccess()
-	{
-		console.log("Successfully set local description.");
 		serverConnection.onmessage = gotMessageFromServer;
-	}
-	function localDescriptionError(error)
-	{
-		console.log("Error setting local description:", error);
-	}
-		
+		console.log("Waiting for offer from controller...");
+	});
+	
 	function gotMessageFromServer(message)
 	{
 		var signal = JSON.parse(message.data);
-		if(signal.sdp && signal.sdp.type == 'answer')
+		if(signal.uuid != uuid) return;
+		if(signal.sdp && !remoteDescriptionSet)
 		{
-			// Here we get an answer back from the phone via the server
-			console.log("Received answer from phone controller.");
-			peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(openDataChannel);
+			peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function()
+			{
+				console.log("Successfully set remote description");
+				remoteDescriptionSet = true;
+				if(signal.sdp.type == 'offer')
+				{
+					// Here we get an offer from the controller via the server
+					console.log("Received offer. Creating answer...");
+					peerConnection.createAnswer().then(onAnswerSuccess, onError);
+				}
+			}, onError);
 		}
 		else if(signal.ice)
 		{
-			peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice));
+			peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice)).then(onIceSuccess, onError);
 		}
 	}
 	
-	function openDataChannel()
+	function onAnswerSuccess(description)
 	{
-		console.log("Local description:", peerConnection.localDescription);
-		console.log("Remote description:", peerConnection.remoteDescription);
-		// Open the data channel for communications
-		console.log("Opening data channel with phone...");
-		dataChannel = peerConnection.createDataChannel("controller");
-		dataChannel.onopen = sendData;
-		dataChannel.onmessage = onControllerInput;
+		// Send the answer to the controller via the signaling server
+		console.log("Answer created. Sending answer...");
+		serverConnection.send(JSON.stringify({'sdp': description, 'uuid': uuid}));
+		peerConnection.setLocalDescription(description).then(onLocalDescriptionSuccess, onError);
 	}
 	
-	function sendData(event)
+	function onLocalDescriptionSuccess()
 	{
-		console.log("Saying hello to the phone");
-		dataChannel.send("Hello phone controller!");
+		console.log("Successfully set local description.");
+	}
+	function onIceSuccess()
+	{
+		console.log("Successfully added ICE candidate.");
+	}
+	function onError(error)
+	{
+		console.error(error);
+	}
+	
+	
+	function gotDataChannel(event)
+	{
+		// Data channel has been opened by the controller
+		console.log("Data channel has been opened by the controller.");
+		qrCodeDiv.style.display = "none";
+		dataChannel = event.channel;
+		dataChannel.onmessage = onControllerInput;
+		setInterval(sayHello, 1000);
+	}
+	
+	function sayHello()
+	{
+		dataChannel.send(Date.now());
 	}
 	
 	function onControllerInput(event)
 	{
-		console.log("Message from phone:", event.data);
+		console.log("Message from controller:", event.data);
 	}
 }
 
-
-
-
-
-
+function createUUID()
+{
+	function s4()
+	{
+		return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+	}
+	return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+}
 
 function loadLevel()
 {
@@ -928,7 +937,20 @@ function draw()
 		c.fillText('Window width: ' + window.innerWidth, 10, 250);
 		c.fillText('Canvas height: ' + canvas.height, 10, 270);
 		c.fillText('Window height: ' + window.innerHeight, 10, 290);
+		
+		if (dataChannel)
+		{
+			if (dataChannel.readyState == "open") c.fillStyle = "green";
+			else if (dataChannel.readyState == "connecting") c.fillStyle = "yellow";
+			else if (dataChannel.readyState == "closing") c.fillStyle = "orange";
+			else if (dataChannel.readyState == "closed") c.fillStyle = "red";
+			c.fillText('Data channel: ' + dataChannel.readyState, 10, 320);
+		}
+		
+		
 	}
+	
+	//if (qrCode) c.drawImage(qrCode.png, canvas.width/2, canvas.height/2, 100, 100);
 }
 
 function getJumpKey()

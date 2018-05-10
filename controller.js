@@ -64,8 +64,9 @@ function resetCanvas (e) {
 	window.scrollTo(0,0);
 }
 
-function init() {
-	//PETER WUZ HERE
+function init()
+{
+	
 }//init
 
 function draw() {
