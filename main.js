@@ -88,7 +88,7 @@ function initializeConnection()
 	function sendData(event)
 	{
 		console.log("Saying hello to the game");
-		setInterval(sayHello, 1000);
+		//setInterval(sayHello, 1000);
 	}
 	
 	function sayHello()
@@ -100,108 +100,44 @@ function initializeConnection()
 	{
 		console.log("Message from game:", event.data);
 	}
-
-
 }
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-/*
+function tapFunction()
+{
+	dataChannel.send(JSON.stringify({"action" : "tap"}));
+}
 
-//init pubnub
-var calls = 0;
+function doubleTapFunction()
+{
+	dataChannel.send(JSON.stringify({"action" : "doubleTap"}));
+}
 
-var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');
+function swipeRFunction()
+{
+	dataChannel.send(JSON.stringify({"action" : "swipeRight"}));
+}
 
-drone.on('open', function (error) {
-  if (error) {
-    return console.error(error);
-  }
-  var room = drone.subscribe('my_game');
-  room.on('open', function (error) {
-    if (error) {
-      console.error(error);
-    } else {
-      console.log('Connected to room');
-    }
-  });
-});
+function swipeLFunction()
+{
+	dataChannel.send(JSON.stringify({"action" : "swipeLeft"}));
+}
 
-function tapFunction(){
-    //alert("Doing something for a tap");
+function swipeDFunction()
+{
+	dataChannel.send(JSON.stringify({"action" : "swipeDown"}));
+}
 
-    drone.publish({
-    room: "my_game",
-    message: { "log" : "tapFunction"
-    }
+function swipeUFunction()
+{
+	dataChannel.send(JSON.stringify({"action" : "swipeUp"}));
+}
 
-    });
-}//tapFunction
-
-function doubleTapFunction(){
-
-  drone.publish({
-  room: "my_game",
-  message: { "log" : "doubleTapFunction"
-  }
-
-  });
-}//doubleTapFunction
-
-function swipeRFunction(){
-  drone.publish({
-  room: "my_game",
-  message: { "log" : "swipeRFunction"
-  }
-
-  });
-}//swipeRFunction
-
-function swipeLFunction(){
-  drone.publish({
-  room: "my_game",
-  message: { "log" : "swipeLFunction"
-  }
-
-  });
-}//swipeLFunction
-
-function swipeDFunction(){
-  drone.publish({
-  room: "my_game",
-  message: { "log" : "swipeDFunction"
-  }
-
-  });
-}//swipeDFunction
-
-function swipeUFunction(){
-  drone.publish({
-  room: "my_game",
-  message: { "log" : "swipeUFunction"
-  }
-
-  });
-}//swipeUFunction
 var timer = 0;
-function touchStart(){
+function touchStart()
+{
   if (timer == 0){
-    console.log("here");
-    var sendDig = getAnDirection();
-    drone.publish({
-        room: "my_game",
-        message: sendDig
-    });
+
+	dataChannel.send(JSON.stringify({"anlg" : getAnDirection(), "dig" : getDigDirection}));
     timer = 5;
   } else {
     timer --;
@@ -209,34 +145,29 @@ function touchStart(){
 
 
 
-}//touchStart
-var tier2=0;
-function touchMove(){
-if (tier2 == 0){
-        var sendAnal = getAnDirection();
-        drone.publish({
-        room: "my_game",
-        message: sendAnal
-
-      });
-      tier2 = 5;
-    } else {
-        tier2 --;
-      }
-
-}//touchMove
-
-//touchEnd
-function touchEnd() {
-	drone.publish({
-		room: "my_game",
-		message: {
-			"touching" : false
-		}
-	})
 }
 
+var tier2=0;
+function touchMove()
+{
+	if (tier2 == 0)
+	{
+		dataChannel.send(JSON.stringify({"anlg" : getAnDirection(), "dig" : getDigDirection}));
+		tier2 = 5;
+    }
+	else
+	{
+        tier2 --;
+	}
+
+}
+
+function touchEnd()
+{
+	dataChannel.send(JSON.stringify({"touching" : false}));
+}
+
+var cont = new myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, touchStart, touchMove, touchEnd);
 
 
-var cont = new myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction,
-        touchStart, touchMove, touchEnd);*/
+

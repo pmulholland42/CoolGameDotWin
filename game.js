@@ -260,17 +260,12 @@ function initializeConnection()
 		qrCodeDiv.style.display = "none";
 		dataChannel = event.channel;
 		dataChannel.onmessage = onControllerInput;
-		setInterval(sayHello, 1000);
+		//setInterval(sayHello, 1000);
 	}
 	
 	function sayHello()
 	{
-		dataChannel.send(Date.now());
-	}
-	
-	function onControllerInput(event)
-	{
-		console.log("Message from controller:", event.data);
+		dataChannel.send("Hello");
 	}
 }
 
@@ -360,6 +355,35 @@ document.onkeyup = function(event)
 }
 
 
+function onControllerInput(event)
+{
+	var message = JSON.parse(event.data);
+	if (message.action)
+	{
+		console.log(message.action);
+		if (message.action == "swipeUp")
+		{
+			changeGravity(directions.up);
+		}
+		else if (message.action == "swipeDown")
+		{
+			changeGravity(directions.down);
+		}
+		else if (message.action == "swipeLeft")
+		{
+			changeGravity(directions.left);
+		}
+		else if (message.action == "swipeRight")
+		{
+			changeGravity(directions.right);
+		}
+	}
+	else if (message.anlg)
+	{
+		console.log(message);
+	}
+}
+
 function parseController() {
 	
 	if (xDig > 0 || xAnlg > 0) {
@@ -415,6 +439,24 @@ function parseController() {
 	}
 }
 
+// Change the direction of gravity
+function changeGravity(newDirection)
+{
+	if (gravityDirection == newDirection) return;
+	
+	// If we change from horizontal to vertical gravity (or vice-versa), change the direction the player sprite is facing
+	if ((newDirection == directions.up || newDirection == directions.down) && (gravityDirection == directions.left || gravityDirection == directions.left))
+	{
+		facing = directions.right;
+	}
+	else if ((newDirection == directions.left || newDirection == directions.right) && (gravityDirection == directions.up || gravityDirection == directions.down))
+	{
+		facing = directions.up;
+	}
+	
+	gravityDirection = newDirection;
+	airResistance = false;
+}
 
 // Calculate player physics
 function physics()
@@ -426,27 +468,19 @@ function physics()
 	// Change gravity
 	if (heldKeys[controls.gravityUp] && gravityDirection != directions.up)
 	{
-		gravityDirection = directions.up;
-		facing = directions.right;
-		airResistance = false;
+		changeGravity(directions.up);
 	}
 	else if (heldKeys[controls.gravityDown] && gravityDirection != directions.down)
 	{
-		gravityDirection = directions.down;
-		facing = directions.right;
-		airResistance = false;
+		changeGravity(directions.down);
 	}
 	else if (heldKeys[controls.gravityLeft] && gravityDirection != directions.left)
 	{
-		gravityDirection = directions.left;
-		facing = directions.up;
-		airResistance = false;
+		changeGravity(directions.left);
 	}
 	else if (heldKeys[controls.gravityRight] && gravityDirection != directions.right)
 	{
-		gravityDirection = directions.right;
-		facing = directions.up;
-		airResistance = false;
+		changeGravity(directions.right);
 	}
 	
 	// Gravity
@@ -825,56 +859,34 @@ function draw()
 	}
 	
 	// Draw the player
-	if (devMode)
-	{
-		c.fillStyle = "rgba(80, 80, 200, 1)";
-		c.fillRect(playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
-	}
 	var currentSprite;
-	if (gravityDirection == directions.down && facing == directions.right)
+	if (gravityDirection == directions.down)
 	{
-		currentSprite = snekman_down_right;
-	}
-	else if (gravityDirection == directions.down && facing == directions.left)
+		if (facing == directions.right) currentSprite = snekman_down_right;
+		else currentSprite = snekman_down_left;
+	}	
+	else if (gravityDirection == directions.up)
 	{
-		currentSprite = snekman_down_left;
-	}
-	else if (gravityDirection == directions.up && facing == directions.right)
+		if (facing == directions.right) currentSprite = snekman_up_right;
+		else currentSprite = snekman_up_left;
+	}	
+	else if (gravityDirection == directions.left)
 	{
-		currentSprite = snekman_up_right;
-	}
-	else if (gravityDirection == directions.up && facing == directions.left)
+		if (facing == directions.down) currentSprite = snekman_left_down;
+		else currentSprite = snekman_left_up;
+	}	
+	else if (gravityDirection == directions.right)
 	{
-		currentSprite = snekman_up_left;
-	}
-	else if (gravityDirection == directions.left && facing == directions.down)
-	{
-		currentSprite = snekman_left_down;
-	}
-	else if (gravityDirection == directions.left && facing == directions.up)
-	{
-		currentSprite = snekman_left_up;
-	}
-	else if (gravityDirection == directions.right && facing == directions.down)
-	{
-		currentSprite = snekman_right_down;
-	}
-	else if (gravityDirection == directions.right && facing == directions.up)
-	{
-		currentSprite = snekman_right_up;
+		if (facing == directions.down) currentSprite = snekman_right_down;
+		else currentSprite = snekman_right_up;
 	}
 	
 	if (gravityDirection == directions.down || gravityDirection == directions.up)
-	{
 		c.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
-	}
 	else
-	{
-		c.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*.75, playerWidth, playerHeight*1.5);
-	}
+		c.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
 
 
-	
 	if (devMode)
 	{
 		// Red dot on player position
@@ -949,8 +961,6 @@ function draw()
 		
 		
 	}
-	
-	//if (qrCode) c.drawImage(qrCode.png, canvas.width/2, canvas.height/2, 100, 100);
 }
 
 function getJumpKey()

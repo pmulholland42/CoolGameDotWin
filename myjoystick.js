@@ -30,8 +30,8 @@ var tap = false;
 var doubleTap = false;
 var swipe = false;
 
-function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction,
-                    startTouch, moveTouch, endTouch){
+function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, startTouch, moveTouch, endTouch)
+{
                         this.getAnDirection = getAnDirection;
                         this.getDigDirection = getDigDirection;
       setupCanvasL();
@@ -318,7 +318,7 @@ function getAnDirection(){
           ydir = 0;
       }//if checking if NaN
 
-      var analogDir = {'xdir': xdir, 'ydir': ydir, 'touching': true};
+      var analogDir = {'x': xdir, 'y': ydir, 'touching': true};
       return analogDir;
 }//getDirection
 
@@ -353,7 +353,7 @@ function getDigDirection(){
     ydig = 0;
   }//if else for ydig
 
-  var digital = {'xdig': xdig, 'ydig': ydig, 'touching': true};
+  var digital = {'x': xdig, 'y': ydig, 'touching': true};
 
   return digital;
 }//getDigDirection
