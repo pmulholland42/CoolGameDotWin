@@ -1,3 +1,5 @@
+'use strict';
+
 // Page variables
 var canvas; 			// <canvas> HTML tag
 var c;					// Canvas rendering context
@@ -82,16 +84,29 @@ var snekman_left_up;
 var snekman_left_down;
 var snekman_right_up;
 var snekman_right_down;
-var snek;
-var door;
+
+// WebRTC
+var signalingServer = "ws://18.233.98.225:8080";
+var peerConnection; // WebRTC connection to the controller
+var dataChannel; // Communicates with the controller
+var remoteDescriptionSet = false;
+var qrCodeDiv = document.getElementById("qrcode");
+var qrCode;
+var UUID;
+var offer;
 
 // Controller state
-var xDig;
-var yDig;
-var xAnlg;
-var yAnlg;
-var log;
-var touching;
+var analogX = 0;
+var analogY = 0;
+var swipeUp = false;
+var swipeDown = false;
+var swipeLeft = false;
+var swipeRight = false;
+var tap = false;
+var doubleTap = false;
+var pressing = false;
+var touchingRight = false;
+var touchingLeft = false;
 
 // Input variables
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
@@ -113,6 +128,7 @@ var now = Date.now();
 var then = now;
 var deltaT;
 
+
 if (window.innerWidth/gridWidth > window.innerHeight/gridHeight) blockSize = window.innerHeight/gridHeight;
 else blockSize = window.innerWidth/gridWidth;
 
@@ -133,7 +149,7 @@ function createArray(length)
 function init()
 {
 	// Initialize the canvas
-	console.log("Initializing...");
+	console.log("Initializing canvas...");
 	setupCanvas();
 	
 	// Load in all the sprites
@@ -143,10 +159,8 @@ function init()
 	snekman_up_left = document.createElement( 'img' );
 	snekman_left_up = document.createElement( 'img' );
 	snekman_left_down = document.createElement( 'img' );
-	snekman_right_up= document.createElement( 'img' ); 
+	snekman_right_up = document.createElement( 'img' ); 
 	snekman_right_down = document.createElement( 'img' );
-	snek = document.createElement('img');
-	door = document.createElement('img');
 	snekman_down_right.src = "sprites/snekman_down_right.png";
 	snekman_down_left.src = "sprites/snekman_down_left.png";
 	snekman_up_right.src = "sprites/snekman_up_right.png";
@@ -155,46 +169,6 @@ function init()
 	snekman_left_down.src = "sprites/snekman_left_down.png";
 	snekman_right_up.src = "sprites/snekman_right_up.png";
 	snekman_right_down.src = "sprites/snekman_right_down.png";
-	snek.src = "sprites/snekkk.png";
-	door.src = "sprites/door.png";
-	
-	// Set up ScaleDrone for controller communication
-	var drone = new ScaleDrone('yG0sVcaLcpbHQKJK');
-	drone.on('open', function (error) {
-		if (error) {
-			return console.error(error);
-		}
-		
-		var room = drone.subscribe('my_game');
-
-		// What happens when the connection is made
-		room.on('open', function (error) {
-			if (error) {
-				console.error(error);
-			} else {
-				console.log('Connected to room');
-			}
-		});
-
-		// What happens when we receive data
-		room.on('data', function (data) {
-			console.log(data);
-			// Record controller state
-			xDig = data.xdig;
-			yDig = data.ydig;
-			xAnlg = data.xdir;
-			yAnlg = data.ydir;
-			log = data.log;
-			touching = data.touching;
-		});
-	});
-	drone.on('error', function(error){
-		console.log(error);
-	});
-
-	
-	character = document.createElement( 'img' );
-	character.src = "sprites/character.png";
 	
 	playerX = 2;
 	playerY = 12;
@@ -203,6 +177,112 @@ function init()
 	draw();
 	setInterval(draw, 1000/graphicsTickRate);
 	setInterval(physics, 1000/physicsTickRate);
+	
+	// Connect to the controller
+	//initializeConnection();
+}
+
+initializeConnection();
+function initializeConnection()
+{
+	var uuid = createUUID();
+	console.log("UUID: " + uuid);
+	var controllerURL = "coolgame.win/controller.html?id=" + uuid;
+	console.log("Controller: " + controllerURL);
+	qrCode = new QRCode(qrCodeDiv, controllerURL);
+	
+	// Connect to the signaling server
+	console.log("Connecting to signaling server...");
+	const serverConnection = new WebSocket(signalingServer);
+	serverConnection.addEventListener('open', function (event)
+	{
+		console.log("Connection opened.");
+		
+		// Initialize WebRTC connection
+		var configuration = {'iceServers': [{'urls': 'stun:stun.stunprotocol.org:3478'}, {'urls': 'stun:stun.l.google.com:19302'},]};
+		peerConnection = new RTCPeerConnection(configuration);
+		peerConnection.ondatachannel = gotDataChannel;
+		peerConnection.onicecandidate = gotIceCandidate;	
+		function gotIceCandidate(event)
+		{
+			if(event.candidate != null)
+			{
+				serverConnection.send(JSON.stringify({'ice': event.candidate, 'uuid': uuid}));
+			}
+		}
+		serverConnection.onmessage = gotMessageFromServer;
+		console.log("Waiting for offer from controller...");
+	});
+	
+	function gotMessageFromServer(message)
+	{
+		var signal = JSON.parse(message.data);
+		if(signal.uuid != uuid) return;
+		if(signal.sdp && !remoteDescriptionSet)
+		{
+			peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function()
+			{
+				console.log("Successfully set remote description");
+				remoteDescriptionSet = true;
+				if(signal.sdp.type == 'offer')
+				{
+					// Here we get an offer from the controller via the server
+					console.log("Received offer. Creating answer...");
+					peerConnection.createAnswer().then(onAnswerSuccess, onError);
+				}
+			}, onError);
+		}
+		else if(signal.ice)
+		{
+			peerConnection.addIceCandidate(new RTCIceCandidate(signal.ice)).then(onIceSuccess, onError);
+		}
+	}
+	
+	function onAnswerSuccess(description)
+	{
+		// Send the answer to the controller via the signaling server
+		console.log("Answer created. Sending answer...");
+		serverConnection.send(JSON.stringify({'sdp': description, 'uuid': uuid}));
+		peerConnection.setLocalDescription(description).then(onLocalDescriptionSuccess, onError);
+	}
+	
+	function onLocalDescriptionSuccess()
+	{
+		console.log("Successfully set local description.");
+	}
+	function onIceSuccess()
+	{
+		console.log("Successfully added ICE candidate.");
+	}
+	function onError(error)
+	{
+		console.error(error);
+	}
+	
+	
+	function gotDataChannel(event)
+	{
+		// Data channel has been opened by the controller
+		console.log("Data channel has been opened by the controller.");
+		qrCodeDiv.style.display = "none";
+		dataChannel = event.channel;
+		dataChannel.onmessage = onControllerInput;
+		//setInterval(sayHello, 1000);
+	}
+	
+	function sayHello()
+	{
+		dataChannel.send("Hello");
+	}
+}
+
+function createUUID()
+{
+	function s4()
+	{
+		return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+	}
+	return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
 }
 
 function loadLevel()
@@ -281,62 +361,83 @@ document.onkeyup = function(event)
 
 }
 
-
-function parseController() {
-	
-	if (xDig > 0 || xAnlg > 0) {
-		if (gravityDirection == directions.down || gravityDirection == directions.up) {
-			moveRight();
-		} else if (gravityDirection == 'left') {
-			jump();
+// What to do when the controller sends a message
+function onControllerInput(event)
+{
+	var message = JSON.parse(event.data);
+	if (message.action)
+	{
+		console.log(message.action);
+		if (message.action == "swipeUp")
+		{
+			swipeUp = true;
 		}
-	} else if (xDig < 0 || xAnlg < 0) {
-		if (gravityDirection == directions.down || gravityDirection == directions.up) {
-			moveLeft();
-		} else if (gravityDirection == 'right') {
-			console.log("jump?");
-			jump();
+		else if (message.action == "swipeDown")
+		{
+			swipeDown = true;
+		}
+		else if (message.action == "swipeLeft")
+		{
+			swipeLeft = true;
+		}
+		else if (message.action == "swipeRight")
+		{
+			swipeRight = true;
+		}
+		else if (message.action == "tap")
+		{
+			tap = true;
+		}
+		else if (message.action == "doubleTap")
+		{
+			doubleTap = true;
+		}
+		else if (message.action == "press")
+		{
+			pressing = true;
+		}
+		else if (message.action == "endTouchRight")
+		{
+			touchingRight = false;
+			if (pressing)
+			{
+				canJump = true;
+				pressing = false;
+			}
+		}
+		else if (message.action == "endTouchLeft")
+		{
+			touchingLeft = false;
+			analogX = 0;
+			analogY = 0;
 		}
 	}
-	
-	if (yDig > 0 || yAnlg > 0.5) {
-		if (gravityDirection == directions.down) {
-			jump();
-		} else if (gravityDirection == 'right') {
-			moveRight();
-		} else if (gravityDirection == 'left') {
-			moveLeft();
-		}
-	} else if (yDig < 0 || yAnlg < 0.5) {
-		if (gravityDirection == directions.down) {
-			dropDown();
-		} else if (gravityDirection == directions.up) {
-			jump();
-		} else if (gravityDirection == 'right') {
-			moveLeft();
-		} else if (gravityDirection == 'left') {
-			moveRight();
-		}
-	}
-	
-	if (log === "tapFunction") {
-		shoot();
-	} else if (log === "swipeUFunction") {
-		gravityDirection = directions.up;
-	} else if (log === "swipeLFunction") {
-		gravityDirection = 'left';
-	} else if (log === "swipeDFunction") {
-		gravityDirection = directions.down;
-	} else if (log === "swipeRFunction") {
-		gravityDirection = 'right';
-	} else if (log === "doubleTapFunction") {
-		shoot();
-		if (playerX > 5*width/6 && playerY == height-floorHeight) {
-			winner = true;
-		}
+	else if (message.anlgX)
+	{
+		touchingLeft = true;
+		analogX = message.anlgX;
+		analogY = message.anlgY;
 	}
 }
 
+// Change the direction of gravity
+function changeGravity(newDirection)
+{
+	if (gravityDirection == newDirection) return;
+	
+	// If we change from horizontal to vertical gravity (or vice-versa), change the direction the player sprite is facing
+	if ((newDirection == directions.up || newDirection == directions.down) && (gravityDirection == directions.left || gravityDirection == directions.left))
+	{
+		facing = directions.right;
+	}
+	else if ((newDirection == directions.left || newDirection == directions.right) && (gravityDirection == directions.up || gravityDirection == directions.down))
+	{
+		facing = directions.up;
+	}
+	
+	gravityDirection = newDirection;
+	airResistance = false;
+}
 
 // Calculate player physics
 function physics()
@@ -346,29 +447,25 @@ function physics()
 	deltaT = (now - then)/1000;
 
 	// Change gravity
-	if (heldKeys[controls.gravityUp] && gravityDirection != directions.up)
+	if (heldKeys[controls.gravityUp] || swipeUp)
 	{
-		gravityDirection = directions.up;
-		facing = directions.right;
-		airResistance = false;
+		swipeUp = false;
+		changeGravity(directions.up);
 	}
-	else if (heldKeys[controls.gravityDown] && gravityDirection != directions.down)
+	else if (heldKeys[controls.gravityDown] || swipeDown)
 	{
-		gravityDirection = directions.down;
-		facing = directions.right;
-		airResistance = false;
+		swipeDown = false;
+		changeGravity(directions.down);
 	}
-	else if (heldKeys[controls.gravityLeft] && gravityDirection != directions.left)
+	else if (heldKeys[controls.gravityLeft] || swipeLeft)
 	{
-		gravityDirection = directions.left;
-		facing = directions.up;
-		airResistance = false;
+		swipeLeft = false;
+		changeGravity(directions.left);
 	}
-	else if (heldKeys[controls.gravityRight] && gravityDirection != directions.right)
+	else if (heldKeys[controls.gravityRight] || swipeRight)
 	{
-		gravityDirection = directions.right;
-		facing = directions.up;
-		airResistance = false;
+		swipeRight = false;
+		changeGravity(directions.right);
 	}
 	
 	// Gravity
@@ -393,7 +490,7 @@ function physics()
 	}
 	
 	// Jump
-	if ((heldKeys[controls.jump] || heldKeys[getJumpKey()])&& jumpTimer > 0 && ((canJump && grounded) || jumping))
+	if ((heldKeys[controls.jump] || heldKeys[getJumpKey()] || pressing)&& jumpTimer > 0 && ((canJump && grounded) || jumping))
 	{
 		jumpTimer -= deltaT;
 		jumping = true;
@@ -433,7 +530,13 @@ function physics()
 			playerXSpeed = moveSpeed;
 			facing = directions.right;
 		}
-		else if (grounded || airResistance)
+		else if (analogX != 0)
+		{
+			playerXSpeed = moveSpeed * analogX;
+			if (analogX < 0) facing = directions.left;
+			else facing = directions.right;
+		}
+		else if ((grounded || airResistance) && !touchingLeft)
 		{
 			playerXSpeed = 0;
 		}
@@ -451,7 +554,13 @@ function physics()
 			playerYSpeed = moveSpeed;
 			facing = directions.down;
 		}
-		else if (grounded || airResistance)
+		else if (analogY != 0)
+		{
+			playerYSpeed = moveSpeed * analogY * -1;
+			if (analogY > 0) facing = directions.up;
+			else facing = directions.down;
+		}
+		else if ((grounded || airResistance) && !touchingLeft)
 		{
 			playerYSpeed = 0;
 		}
@@ -509,8 +618,8 @@ function physics()
 		}
 		
 		// Determine what block this corner is in
-		pBlockX = Math.floor(playerX + offsetX);
-		pBlockY = Math.floor(playerY + offsetY);
+		var pBlockX = Math.floor(playerX + offsetX);
+		var pBlockY = Math.floor(playerY + offsetY);
 		
 		// Make sure it's inbounds
 		if (pBlockX >= 0 && pBlockX < gridWidth && pBlockY >= 0 && pBlockY < gridHeight)
@@ -747,56 +856,34 @@ function draw()
 	}
 	
 	// Draw the player
-	if (devMode)
-	{
-		c.fillStyle = "rgba(80, 80, 200, 1)";
-		c.fillRect(playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight/2, playerWidth, playerHeight);
-	}
 	var currentSprite;
-	if (gravityDirection == directions.down && facing == directions.right)
+	if (gravityDirection == directions.down)
 	{
-		currentSprite = snekman_down_right;
-	}
-	else if (gravityDirection == directions.down && facing == directions.left)
+		if (facing == directions.right) currentSprite = snekman_down_right;
+		else currentSprite = snekman_down_left;
+	}	
+	else if (gravityDirection == directions.up)
 	{
-		currentSprite = snekman_down_left;
-	}
-	else if (gravityDirection == directions.up && facing == directions.right)
+		if (facing == directions.right) currentSprite = snekman_up_right;
+		else currentSprite = snekman_up_left;
+	}	
+	else if (gravityDirection == directions.left)
 	{
-		currentSprite = snekman_up_right;
-	}
-	else if (gravityDirection == directions.up && facing == directions.left)
+		if (facing == directions.down) currentSprite = snekman_left_down;
+		else currentSprite = snekman_left_up;
+	}	
+	else if (gravityDirection == directions.right)
 	{
-		currentSprite = snekman_up_left;
-	}
-	else if (gravityDirection == directions.left && facing == directions.down)
-	{
-		currentSprite = snekman_left_down;
-	}
-	else if (gravityDirection == directions.left && facing == directions.up)
-	{
-		currentSprite = snekman_left_up;
-	}
-	else if (gravityDirection == directions.right && facing == directions.down)
-	{
-		currentSprite = snekman_right_down;
-	}
-	else if (gravityDirection == directions.right && facing == directions.up)
-	{
-		currentSprite = snekman_right_up;
+		if (facing == directions.down) currentSprite = snekman_right_down;
+		else currentSprite = snekman_right_up;
 	}
 	
 	if (gravityDirection == directions.down || gravityDirection == directions.up)
-	{
 		c.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
-	}
 	else
-	{
-		c.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*.75, playerWidth, playerHeight*1.5);
-	}
+		c.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
 
 
-	
 	if (devMode)
 	{
 		// Red dot on player position
@@ -859,6 +946,36 @@ function draw()
 		c.fillText('Window width: ' + window.innerWidth, 10, 250);
 		c.fillText('Canvas height: ' + canvas.height, 10, 270);
 		c.fillText('Window height: ' + window.innerHeight, 10, 290);
+		
+		if (dataChannel)
+		{
+			if (dataChannel.readyState == "open") c.fillStyle = "green";
+			else if (dataChannel.readyState == "connecting") c.fillStyle = "yellow";
+			else if (dataChannel.readyState == "closing") c.fillStyle = "orange";
+			else if (dataChannel.readyState == "closed") c.fillStyle = "red";
+			c.fillText('Data channel: ' + dataChannel.readyState, 10, 320);
+		}
+		
+		// Touching joystick
+		if (touchingLeft)
+			c.fillStyle = "green";
+		else
+			c.fillStyle = "red";
+		c.fillText('Touching left: '+ touchingLeft, 10, 340);
+		
+		// Touching swipe pad
+		if (touchingLeft)
+			c.fillStyle = "green";
+		else
+			c.fillStyle = "red";
+		c.fillText('Touching right: '+ touchingRight, 10, 360);
+		
+		// Pressing right side
+		if (pressing)
+			c.fillStyle = "green";
+		else
+			c.fillStyle = "red";
+		c.fillText('Pressing: '+ pressing, 10, 380);
 	}
 }
 
