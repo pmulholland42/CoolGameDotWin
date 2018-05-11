@@ -137,7 +137,7 @@ function touchStart()
 {
   if (timer == 0){
 
-	dataChannel.send(JSON.stringify({"anlg" : getAnDirection(), "dig" : getDigDirection}));
+	dataChannel.send(JSON.stringify(getAnDirection()));
     timer = 5;
   } else {
     timer --;
@@ -152,7 +152,7 @@ function touchMove()
 {
 	if (tier2 == 0)
 	{
-		dataChannel.send(JSON.stringify({"anlg" : getAnDirection(), "dig" : getDigDirection}));
+		dataChannel.send(JSON.stringify(getAnDirection()));
 		tier2 = 5;
     }
 	else
@@ -164,7 +164,7 @@ function touchMove()
 
 function touchEnd()
 {
-	dataChannel.send(JSON.stringify({"touching" : false}));
+	dataChannel.send(JSON.stringify({"action" : "endTouch"}));
 }
 
 var cont = new myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, touchStart, touchMove, touchEnd);

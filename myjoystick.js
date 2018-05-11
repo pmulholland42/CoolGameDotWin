@@ -32,8 +32,8 @@ var swipe = false;
 
 function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, startTouch, moveTouch, endTouch)
 {
-                        this.getAnDirection = getAnDirection;
-                        this.getDigDirection = getDigDirection;
+	this.getAnDirection = getAnDirection;
+    this.getDigDirection = getDigDirection;
       setupCanvasL();
       setupCanvasR();
       rightHammer = new Hammer(canvasR);
@@ -168,12 +168,12 @@ function drawL(){
 
 function drawJoystick(){
     var digDirection = getDigDirection();
-    var digx = digDirection.xdig;
-    var digy = digDirection.ydig;
+    var digx = digDirection.digX;
+    var digy = digDirection.digY;
 
     var anlDirection = getAnDirection();
-    var anlx = anlDirection.xdir;
-    var anly = anlDirection.ydir;
+    var anlx = anlDirection.anlgX;
+    var anly = anlDirection.anlgY;
 
     c.beginPath();
     c.strokeStyle = "rgba(255, 0, 0, 0.5)";//red base
@@ -318,7 +318,7 @@ function getAnDirection(){
           ydir = 0;
       }//if checking if NaN
 
-      var analogDir = {'x': xdir, 'y': ydir, 'touching': true};
+      var analogDir = {'anlgX': xdir, 'anlgY': ydir, 'touching': true};
       return analogDir;
 }//getDirection
 
@@ -353,7 +353,7 @@ function getDigDirection(){
     ydig = 0;
   }//if else for ydig
 
-  var digital = {'x': xdig, 'y': ydig, 'touching': true};
+  var digital = {'digX': xdig, 'digY': ydig, 'touching': true};
 
   return digital;
 }//getDigDirection

@@ -85,7 +85,7 @@ var snekman_left_down;
 var snekman_right_up;
 var snekman_right_down;
 
-// Controller state
+// WebRTC
 var signalingServer = "ws://18.233.98.225:8080";
 var peerConnection; // WebRTC connection to the controller
 var dataChannel; // Communicates with the controller
@@ -94,12 +94,17 @@ var qrCodeDiv = document.getElementById("qrcode");
 var qrCode;
 var UUID;
 var offer;
-var xDig;
-var yDig;
-var xAnlg;
-var yAnlg;
-var log;
-var touching;
+
+// Controller state
+var analogX = 0;
+var analogY = 0;
+var swipeUp = false;
+var swipeDown = false;
+var swipeLeft = false;
+var swipeRight = false;
+var tap = false;
+var doubleTap = false;
+var touching = false;
 
 // Input variables
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
@@ -354,7 +359,7 @@ document.onkeyup = function(event)
 
 }
 
-
+// What to do when the controller sends a message
 function onControllerInput(event)
 {
 	var message = JSON.parse(event.data);
@@ -363,79 +368,40 @@ function onControllerInput(event)
 		console.log(message.action);
 		if (message.action == "swipeUp")
 		{
-			changeGravity(directions.up);
+			swipeUp = true;
 		}
 		else if (message.action == "swipeDown")
 		{
-			changeGravity(directions.down);
+			swipeDown = true;
 		}
 		else if (message.action == "swipeLeft")
 		{
-			changeGravity(directions.left);
+			swipeLeft = true;
 		}
 		else if (message.action == "swipeRight")
 		{
-			changeGravity(directions.right);
+			swipeRight = true;
+		}
+		else if (message.action == "tap")
+		{
+			tap = true;
+		}
+		else if (message.action == "doubleTap")
+		{
+			doubleTap = true;
+		}
+		else if (message.action == "endTouch")
+		{
+			touching = false;
+			analogX = 0;
+			analogY = 0;
 		}
 	}
-	else if (message.anlg)
+	else if (message.anlgX)
 	{
-		console.log(message);
-	}
-}
-
-function parseController() {
-	
-	if (xDig > 0 || xAnlg > 0) {
-		if (gravityDirection == directions.down || gravityDirection == directions.up) {
-			moveRight();
-		} else if (gravityDirection == 'left') {
-			jump();
-		}
-	} else if (xDig < 0 || xAnlg < 0) {
-		if (gravityDirection == directions.down || gravityDirection == directions.up) {
-			moveLeft();
-		} else if (gravityDirection == 'right') {
-			console.log("jump?");
-			jump();
-		}
-	}
-	
-	if (yDig > 0 || yAnlg > 0.5) {
-		if (gravityDirection == directions.down) {
-			jump();
-		} else if (gravityDirection == 'right') {
-			moveRight();
-		} else if (gravityDirection == 'left') {
-			moveLeft();
-		}
-	} else if (yDig < 0 || yAnlg < 0.5) {
-		if (gravityDirection == directions.down) {
-			dropDown();
-		} else if (gravityDirection == directions.up) {
-			jump();
-		} else if (gravityDirection == 'right') {
-			moveLeft();
-		} else if (gravityDirection == 'left') {
-			moveRight();
-		}
-	}
-	
-	if (log === "tapFunction") {
-		shoot();
-	} else if (log === "swipeUFunction") {
-		gravityDirection = directions.up;
-	} else if (log === "swipeLFunction") {
-		gravityDirection = 'left';
-	} else if (log === "swipeDFunction") {
-		gravityDirection = directions.down;
-	} else if (log === "swipeRFunction") {
-		gravityDirection = 'right';
-	} else if (log === "doubleTapFunction") {
-		shoot();
-		if (playerX > 5*width/6 && playerY == height-floorHeight) {
-			winner = true;
-		}
+		touching = true;
+		analogX = message.anlgX;
+		analogY = message.anlgY;
 	}
 }
 
@@ -466,20 +432,24 @@ function physics()
 	deltaT = (now - then)/1000;
 
 	// Change gravity
-	if (heldKeys[controls.gravityUp] && gravityDirection != directions.up)
+	if (heldKeys[controls.gravityUp] || swipeUp)
 	{
+		swipeUp = false;
 		changeGravity(directions.up);
 	}
-	else if (heldKeys[controls.gravityDown] && gravityDirection != directions.down)
+	else if (heldKeys[controls.gravityDown] || swipeDown)
 	{
+		swipeDown = false;
 		changeGravity(directions.down);
 	}
-	else if (heldKeys[controls.gravityLeft] && gravityDirection != directions.left)
+	else if (heldKeys[controls.gravityLeft] || swipeLeft)
 	{
+		swipeLeft = false;
 		changeGravity(directions.left);
 	}
-	else if (heldKeys[controls.gravityRight] && gravityDirection != directions.right)
+	else if (heldKeys[controls.gravityRight] || swipeRight)
 	{
+		swipeRight = false;
 		changeGravity(directions.right);
 	}
 	
@@ -545,7 +515,13 @@ function physics()
 			playerXSpeed = moveSpeed;
 			facing = directions.right;
 		}
-		else if (grounded || airResistance)
+		else if (analogX != 0)
+		{
+			playerXSpeed = moveSpeed * analogX;
+			if (analogX < 0) facing = directions.left;
+			else facing = directions.right;
+		}
+		else if ((grounded || airResistance) && !touching)
 		{
 			playerXSpeed = 0;
 		}
@@ -563,7 +539,13 @@ function physics()
 			playerYSpeed = moveSpeed;
 			facing = directions.down;
 		}
-		else if (grounded || airResistance)
+		else if (analogY != 0)
+		{
+			playerYSpeed = moveSpeed * analogY * -1;
+			if (analogY > 0) facing = directions.up;
+			else facing = directions.down;
+		}
+		else if ((grounded || airResistance) && !touching)
 		{
 			playerYSpeed = 0;
 		}
@@ -959,7 +941,12 @@ function draw()
 			c.fillText('Data channel: ' + dataChannel.readyState, 10, 320);
 		}
 		
-		
+		// Touching controller
+		if (touching)
+			c.fillStyle = "green";
+		else
+			c.fillStyle = "red";
+		c.fillText('Touching: '+ touching, 10, 340);
 	}
 }
 
