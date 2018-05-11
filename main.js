@@ -162,12 +162,27 @@ function touchMove()
 
 }
 
-function touchEnd()
+function touchEndL()
 {
-	dataChannel.send(JSON.stringify({"action" : "endTouch"}));
+	dataChannel.send(JSON.stringify({"action" : "endTouchLeft"}));
 }
 
-var cont = new myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, touchStart, touchMove, touchEnd);
+function touchEndR()
+{
+	dataChannel.send(JSON.stringify({"action" : "endTouchRight"}));
+}
+
+function press()
+{
+	dataChannel.send(JSON.stringify({"action" : "press"}));
+}
+
+function pressUp()
+{
+	dataChannel.send(JSON.stringify({"action" : "pressUp"}));
+}
+
+var cont = new myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, touchStart, touchMove, touchEndR, touchEndL, press, pressUp);
 
 
 

@@ -10,6 +10,7 @@ var baseX, baseY; //where the base of the analog stick will be drawn
 var touchable = 'createTouch' in document;
 var joystickTouch;
 var leftTouching = false;
+var rightTouching = false;
 var halfX = (window.innerWidth/2);
 var rad = 40;
 var updateTime = Date.now();
@@ -30,13 +31,20 @@ var tap = false;
 var doubleTap = false;
 var swipe = false;
 
-function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, startTouch, moveTouch, endTouch)
+function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFunction, swipeUFunction, swipeDFunction, startTouch, moveTouch, endTouchR, endTouchL, press, pressUp)
 {
 	this.getAnDirection = getAnDirection;
     this.getDigDirection = getDigDirection;
       setupCanvasL();
       setupCanvasR();
       rightHammer = new Hammer(canvasR);
+
+	      rightHammer.add(new Hammer.Press({
+        event: 'press',
+        pointer: 2,
+        threshold: 20,
+        time: 68,
+    }));
 
       setInterval(drawL, 1000/35); //calls draw function 1000/35 times per second continuously
       setInterval(drawR, 1000/35);
@@ -82,7 +90,11 @@ function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFuncti
           }, false );
           canvasL.addEventListener( 'touchend', function(e){
               leftTouching = false;
-              endTouch();
+              endTouchL();
+          }, false );
+		  canvasR.addEventListener( 'touchend', function(e){
+              rightTouching = false;
+              endTouchR();
           }, false );
 
           rightHammer.on('tap', tapFunction);
@@ -93,6 +105,8 @@ function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFuncti
           rightHammer.on('swipeleft', swipeLFunction);
           rightHammer.on('swipeup', swipeUFunction);
           rightHammer.on('swipedown', swipeDFunction);
+          rightHammer.on('press', press);
+          rightHammer.on('pressUp', pressUp);
 
           window.onorientationchange = resetCanvas;
           window.onresize = resetCanvas;

@@ -104,7 +104,9 @@ var swipeLeft = false;
 var swipeRight = false;
 var tap = false;
 var doubleTap = false;
-var touching = false;
+var pressing = false;
+var touchingRight = false;
+var touchingLeft = false;
 
 // Input variables
 var heldKeys = {};		// heldKey[x] is true when the key with that keyCode is being held down
@@ -390,16 +392,29 @@ function onControllerInput(event)
 		{
 			doubleTap = true;
 		}
-		else if (message.action == "endTouch")
+		else if (message.action == "press")
 		{
-			touching = false;
+			pressing = true;
+		}
+		else if (message.action == "endTouchRight")
+		{
+			touchingRight = false;
+			if (pressing)
+			{
+				canJump = true;
+				pressing = false;
+			}
+		}
+		else if (message.action == "endTouchLeft")
+		{
+			touchingLeft = false;
 			analogX = 0;
 			analogY = 0;
 		}
 	}
 	else if (message.anlgX)
 	{
-		touching = true;
+		touchingLeft = true;
 		analogX = message.anlgX;
 		analogY = message.anlgY;
 	}
@@ -475,7 +490,7 @@ function physics()
 	}
 	
 	// Jump
-	if ((heldKeys[controls.jump] || heldKeys[getJumpKey()])&& jumpTimer > 0 && ((canJump && grounded) || jumping))
+	if ((heldKeys[controls.jump] || heldKeys[getJumpKey()] || pressing)&& jumpTimer > 0 && ((canJump && grounded) || jumping))
 	{
 		jumpTimer -= deltaT;
 		jumping = true;
@@ -521,7 +536,7 @@ function physics()
 			if (analogX < 0) facing = directions.left;
 			else facing = directions.right;
 		}
-		else if ((grounded || airResistance) && !touching)
+		else if ((grounded || airResistance) && !touchingLeft)
 		{
 			playerXSpeed = 0;
 		}
@@ -545,7 +560,7 @@ function physics()
 			if (analogY > 0) facing = directions.up;
 			else facing = directions.down;
 		}
-		else if ((grounded || airResistance) && !touching)
+		else if ((grounded || airResistance) && !touchingLeft)
 		{
 			playerYSpeed = 0;
 		}
@@ -941,12 +956,26 @@ function draw()
 			c.fillText('Data channel: ' + dataChannel.readyState, 10, 320);
 		}
 		
-		// Touching controller
-		if (touching)
+		// Touching joystick
+		if (touchingLeft)
 			c.fillStyle = "green";
 		else
 			c.fillStyle = "red";
-		c.fillText('Touching: '+ touching, 10, 340);
+		c.fillText('Touching left: '+ touchingLeft, 10, 340);
+		
+		// Touching swipe pad
+		if (touchingLeft)
+			c.fillStyle = "green";
+		else
+			c.fillStyle = "red";
+		c.fillText('Touching right: '+ touchingRight, 10, 360);
+		
+		// Pressing right side
+		if (pressing)
+			c.fillStyle = "green";
+		else
+			c.fillStyle = "red";
+		c.fillText('Pressing: '+ pressing, 10, 380);
 	}
 }
 
