@@ -263,7 +263,6 @@ function initializeConnection()
 		qrCodeDiv.style.display = "none";
 		dataChannel = event.channel;
 		dataChannel.onmessage = onControllerInput;
-		//setInterval(sayHello, 1000);
 	}
 	
 	function sayHello()
@@ -457,20 +456,6 @@ function game()
 	}
 	canvas.width = blockSize * gridWidth;
 	canvas.height = blockSize * gridHeight;
-	
-	// Determine the player's hitbox size
-	if (gravityDirection == directions.down || gravityDirection == directions.up)
-	{
-		playerWidth = blockSize*0.49;
-		playerHeight = blockSize*0.95;
-	}
-	else 
-	{
-		playerWidth = blockSize*0.95;
-		playerHeight = blockSize*0.49;
-	}				
-	offsetX = playerWidth/(blockSize*2);
-	offsetY = playerHeight/(blockSize*2);
 
 	// Change gravity direction
 	if (heldKeys[controls.gravityUp] || swipeUp)
@@ -493,6 +478,20 @@ function game()
 		swipeRight = false;
 		changeGravity(directions.right);
 	}
+	
+	// Determine the player's hitbox size
+	if (gravityDirection == directions.down || gravityDirection == directions.up)
+	{
+		playerWidth = blockSize*0.49;
+		playerHeight = blockSize*0.95;
+	}
+	else 
+	{
+		playerWidth = blockSize*0.95;
+		playerHeight = blockSize*0.49;
+	}				
+	offsetX = playerWidth/(blockSize*2);
+	offsetY = playerHeight/(blockSize*2);
 	
 	// Gravity
 	if (!jumping && !grounded)
