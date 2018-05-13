@@ -42,8 +42,8 @@ function myjoystick(tapFunction, doubleTapFunction, swipeRFunction, swipeLFuncti
 	      rightHammer.add(new Hammer.Press({
         event: 'press',
         pointer: 2,
-        threshold: 10,
-        time: 5,
+        threshold: 40,
+        time: 20,
     }));
 
       setInterval(drawL, 1000/35); //calls draw function 1000/35 times per second continuously
