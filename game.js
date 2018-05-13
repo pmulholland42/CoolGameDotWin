@@ -16,7 +16,7 @@ var grounded = false;
 // Used for collision detection:
 var playerWidth;
 var playerHeight;
-var adjustX;
+var adjustX; // Corrects for block coordinates
 var adjustY;
 var offsetX; // Half of player width
 var offsetY;
@@ -33,8 +33,8 @@ var jumpHeight = 3; // Height in blocks. The player can jump higher than this th
 var jumpTimer = 0; // Used to track how long the player is jumping
 var maxJumpTime = jumpHeight/jumpSpeed; // How long the player can go up (seconds) before gravity starts working on them.
 var jumping = false;
-var canJump = true;
-var airResistance = false; // Should the player stop moving horizontally in the air when the player is not moving? This gets toggled when jumping.
+var canJump = true; // This is false when the player is holding the jump key, and prevents jumping again until they release and press again
+var airResistance = false; // This lets us toggle between floaty physics when shifting gravity and tighter control when jumping
 
 var directions = {
 	down: 0,
@@ -127,10 +127,6 @@ var then = now;
 var deltaT;
 var frameCount = 0;
 var framesPerSecond = 0;
-
-
-if (window.innerWidth/gridWidth > window.innerHeight/gridHeight) blockSize = window.innerHeight/gridHeight;
-else blockSize = window.innerWidth/gridWidth;
 
 function createArray(length)
 {
@@ -459,10 +455,10 @@ function game()
 		// Should see floor
 		blockSize = window.innerWidth/gridWidth;
 	}
-	
 	canvas.width = blockSize * gridWidth;
 	canvas.height = blockSize * gridHeight;
 	
+	// Determine the player's hitbox size
 	if (gravityDirection == directions.down || gravityDirection == directions.up)
 	{
 		playerWidth = blockSize*0.49;
@@ -472,12 +468,11 @@ function game()
 	{
 		playerWidth = blockSize*0.95;
 		playerHeight = blockSize*0.49;
-	}		
-		
+	}				
 	offsetX = playerWidth/(blockSize*2);
 	offsetY = playerHeight/(blockSize*2);
 
-	// Change gravity
+	// Change gravity direction
 	if (heldKeys[controls.gravityUp] || swipeUp)
 	{
 		swipeUp = false;
@@ -520,8 +515,11 @@ function game()
 		}
 	}
 	
-	// Jump
-	if ((heldKeys[controls.jump] || heldKeys[getJumpKey()] || pressing)&& jumpTimer > 0 && ((canJump && grounded) || jumping))
+	// Jumping
+	// First check if the player is giving the input to jump
+	// Then make sure they are either able to jump or already jumping
+	// Then check the jump timer in case they are already jumping and hit the max jump height
+	if ((heldKeys[controls.jump] || heldKeys[getJumpKey()] || pressing) && ((canJump && grounded) || jumping) && jumpTimer > 0)
 	{
 		jumpTimer -= deltaT;
 		jumping = true;
@@ -739,7 +737,7 @@ function game()
 		else
 		{
 			// Ceiling collision detection
-			if (playerY + offsetY < 0)
+			if (playerY + offsetY <= 0)
 			{
 				playerY = -offsetY;
 				playerYSpeed = 0;
@@ -755,7 +753,7 @@ function game()
 				}
 			}
 			// Ground collision detection
-			else if (playerY + offsetY > gridHeight)
+			else if (playerY + offsetY >= gridHeight)
 			{
 				playerY = gridHeight - offsetY;
 				playerYSpeed = 0;
@@ -771,7 +769,7 @@ function game()
 				}
 			}	
 			// Left wall collision detection
-			if (playerX + offsetX < 0)
+			if (playerX + offsetX <= 0)
 			{
 				playerX = -offsetX;
 				playerXSpeed = 0;
@@ -787,7 +785,7 @@ function game()
 				}
 			}
 			// Right wall collision detection
-			else if (playerX + offsetX > gridWidth)
+			else if (playerX + offsetX >= gridWidth)
 			{
 				playerX = gridWidth - offsetX;
 				playerXSpeed = 0; 
