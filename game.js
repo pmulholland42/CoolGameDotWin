@@ -23,16 +23,14 @@ var offsetY;
 var precisionFactor = 0.000001; // Used for correcting floating point errors
 
 // Adjustable values:
-var physicsTickRate = 500; // Number of times physics is calculated per second (max 1000)
-var graphicsTickRate = 250; // Number of times canvas is refreshed per second (max 1000)
-
+var tickRate = 3; // Number of milliseconds between game loop calls
 var gravity = 30; // Downward acceleration (blocks per second^2)
 var maxFallSpeed = 12; // Terminal velocity (blocks per second)
 var moveSpeed = 4; // Horizontal movement speed of player (blocks per second)
-
 var jumpSpeed = 9; // Vertical speed in blocks per second.
 var jumpHeight = 3; // Height in blocks. The player can jump higher than this though because gravity takes time to slow them.
-var jumpTimer = 0; // Used to track how long the player is jumping.
+
+var jumpTimer = 0; // Used to track how long the player is jumping
 var maxJumpTime = jumpHeight/jumpSpeed; // How long the player can go up (seconds) before gravity starts working on them.
 var jumping = false;
 var canJump = true;
@@ -127,6 +125,8 @@ var controls = {
 var now = Date.now();
 var then = now;
 var deltaT;
+var frameCount = 0;
+var framesPerSecond = 0;
 
 
 if (window.innerWidth/gridWidth > window.innerHeight/gridHeight) blockSize = window.innerHeight/gridHeight;
@@ -173,16 +173,16 @@ function init()
 	playerX = 2;
 	playerY = 12;
 	
-	// Render the canvas
-	draw();
-	setInterval(draw, 1000/graphicsTickRate);
-	setInterval(physics, 1000/physicsTickRate);
+	// Start the game loop
+	setInterval(game, tickRate);
+	
+	// Keep track of the frame rate
+	setInterval(countFrames, 1000);
 	
 	// Connect to the controller
-	//initializeConnection();
+	initializeConnection();
 }
 
-initializeConnection();
 function initializeConnection()
 {
 	var uuid = createUUID();
@@ -440,11 +440,42 @@ function changeGravity(newDirection)
 }
 
 // Calculate player physics
-function physics()
+function game()
 {
 	// Calculate the time since the last physics update
 	now = Date.now();
 	deltaT = (now - then)/1000;
+	
+	// Determine how big the canvas should be
+	if (window.innerWidth/gridWidth > window.innerHeight/gridHeight) 
+	{
+		// Screen is too wide, base the grid off screen height
+		// Should see walls
+		blockSize = window.innerHeight/gridHeight;
+	}
+	else
+	{
+		// Screen is not wide enough, base the grid off screen width
+		// Should see floor
+		blockSize = window.innerWidth/gridWidth;
+	}
+	
+	canvas.width = blockSize * gridWidth;
+	canvas.height = blockSize * gridHeight;
+	
+	if (gravityDirection == directions.down || gravityDirection == directions.up)
+	{
+		playerWidth = blockSize*0.49;
+		playerHeight = blockSize*0.95;
+	}
+	else 
+	{
+		playerWidth = blockSize*0.95;
+		playerHeight = blockSize*0.49;
+	}		
+		
+	offsetX = playerWidth/(blockSize*2);
+	offsetY = playerHeight/(blockSize*2);
 
 	// Change gravity
 	if (heldKeys[controls.gravityUp] || swipeUp)
@@ -774,44 +805,6 @@ function physics()
 		}
 	}
 	
-	// Reset the physics timer
-	then = now;
-}
-
-
-// Render the canvas - called every 20 ms
-function draw()
-{
-	if (window.innerWidth/gridWidth > window.innerHeight/gridHeight) 
-	{
-		// Screen is too wide, base the grid off screen height
-		// Should see walls
-		blockSize = window.innerHeight/gridHeight;
-	}
-	else
-	{
-		// Screen is not wide enough, base the grid off screen width
-		// Should see floor
-		blockSize = window.innerWidth/gridWidth;
-	}
-	
-	canvas.width = blockSize * gridWidth;
-	canvas.height = blockSize * gridHeight;
-	
-	if (gravityDirection == directions.down || gravityDirection == directions.up)
-	{
-		playerWidth = blockSize*0.49;
-		playerHeight = blockSize*0.95;
-	}
-	else 
-	{
-		playerWidth = blockSize*0.95;
-		playerHeight = blockSize*0.49;
-	}		
-		
-	offsetX = playerWidth/(blockSize*2);
-	offsetY = playerHeight/(blockSize*2);
-	
 	// Draw the blocks
 	for (var x = 0; x < gridWidth; x++)
 	{
@@ -883,7 +876,7 @@ function draw()
 	else
 		c.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
 
-
+	// Display stats
 	if (devMode)
 	{
 		// Red dot on player position
@@ -946,7 +939,9 @@ function draw()
 		c.fillText('Window width: ' + window.innerWidth, 10, 250);
 		c.fillText('Canvas height: ' + canvas.height, 10, 270);
 		c.fillText('Window height: ' + window.innerHeight, 10, 290);
+		c.fillText('FPS: ' + framesPerSecond, 10, 300);  
 		
+		// Data channel connection status
 		if (dataChannel)
 		{
 			if (dataChannel.readyState == "open") c.fillStyle = "green";
@@ -956,14 +951,14 @@ function draw()
 			c.fillText('Data channel: ' + dataChannel.readyState, 10, 320);
 		}
 		
-		// Touching joystick
+		// Touching left side
 		if (touchingLeft)
 			c.fillStyle = "green";
 		else
 			c.fillStyle = "red";
 		c.fillText('Touching left: '+ touchingLeft, 10, 340);
 		
-		// Touching swipe pad
+		// Touching right side
 		if (touchingLeft)
 			c.fillStyle = "green";
 		else
@@ -977,6 +972,16 @@ function draw()
 			c.fillStyle = "red";
 		c.fillText('Pressing: '+ pressing, 10, 380);
 	}
+	
+	// Reset the physics timer
+	then = now;
+	frameCount++;
+}
+
+function countFrames()
+{
+	framesPerSecond = frameCount;
+	frameCount = 0;
 }
 
 function getJumpKey()
