@@ -35,6 +35,11 @@ canvas
 	font-family: "Helvetica";
 }
 
+.qrcode
+{
+    margin: auto;
+    width: 90%;
+}
 
 
 
