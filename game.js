@@ -260,7 +260,7 @@ function initializeConnection()
 	{
 		// Data channel has been opened by the controller
 		console.log("Data channel has been opened by the controller.");
-		qrCodeDiv.style.display = "none";
+		document.getElementById("menu").style.display = "none";
 		dataChannel = event.channel;
 		dataChannel.onmessage = onControllerInput;
 	}
@@ -1001,9 +1001,30 @@ function getJumpKey()
 	}
 }
 
+function hideMenu()
+{
+	document.getElementById("menu").style.display = "none";
+	return false;
+}
 
-
-
+function toggleCredits()
+{
+	if (credits.style.display == "none")
+	{
+		// Show credits
+		document.getElementById("credits").style.display = "";
+		document.getElementById("toggleCredits").innerHTML = "Hide credits";
+		document.getElementById("menu").style.width = "40%";
+	}
+	else
+	{
+		// Hide credits
+		document.getElementById("credits").style.display = "none";
+		document.getElementById("toggleCredits").innerHTML = "View credits";
+		document.getElementById("menu").style.width = "15%";
+	}
+	return false;
+}
 
 
 
