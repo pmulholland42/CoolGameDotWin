@@ -29,7 +29,7 @@ img
 	text-align: center;
     margin: auto;
     width: 15%;
-	min-width: 200px;
+	min-width: 300px;
 	max-height: 90%;
     border: 3px solid black;
     padding: 10px;
@@ -40,7 +40,7 @@ img
 	left: 50%;
 	transform: translate(-50%, -50%);
 	font-family: "Helvetica";
-	overflow: scroll;
+	overflow-y: scroll;
 }
 
 .qrcode
