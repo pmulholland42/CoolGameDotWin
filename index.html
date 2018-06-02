@@ -4,42 +4,46 @@
         <meta charset="utf-8">
 		<link rel="icon" type="image/png" href="http://coolgame.win.s3.amazonaws.com/favicon.png">
         <title>Cool game!</title>
+		<script type = "text/javascript" src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
+		<script type="text/javascript" src="https://rawgit.com/davidshimjs/qrcodejs/master/qrcode.js"></script>
+		<script type="text/javascript" src="game.js?v={random number/string}"></script>
+		<link rel="stylesheet" href="game.css?v={random number/string}">
     </head>
 
-    <body onload="init()" style="overflow:auto; height:100%;">
-		<frame>
-			<div id="menu" class="menu">
-				<p>Scan this QR code to connect your phone as the controller:</p>
+    <body onload="init()">
+		<!--Canvas for rendering the game-->
+		<canvas id="gamecanvas"></canvas>
+		
+		<!-- Menu -->
+		<div id="menu" class="menu">
+			<p>Scan this QR code to connect your phone as the controller:</p>
+			</br>
+			<div id="qrcode" class="qrcode"></div>
+			</br>
+			<p><a href="#" onclick="hideMenu()">Play with keyboard only</a></p>
+			<p><a id="toggleCredits" href="#" onclick="toggleCredits()">View credits</a></p>
+			<div id="credits" style="display:none">
 				</br>
-				<div id="qrcode" class="qrcode"></div>
+				<h3>Created at Steelhacks 2017 by:</h3>
+				<p><a href="https://github.com/TheShed412">Tyler Bobik</a></p>
+				<p><a href="https://github.com/dic20">Dan Critchfield</a></p>
+				<p><a href="https://github.com/anm226">Andrew Masih</a></p>
+				<p><a href="https://github.com/pmulholland42">Peter Mulholland</a></p>
 				</br>
-				<p><a href="#" onclick="hideMenu()">Play with keyboard only</a></p>
-				<p><a id="toggleCredits" href="#" onclick="toggleCredits()">View credits</a></p>
-				<div id="credits" style="display:none">
-					</br>
-					<h3>Created at Steelhacks 2017 by:</h3>
-					<p><a href="https://github.com/TheShed412">Tyler Bobik</a></p>
-					<p><a href="https://github.com/dic20">Dan Critchfield</a></p>
-					<p><a href="https://github.com/anm226">Andrew Masih</a></p>
-					<p><a href="https://github.com/pmulholland42">Peter Mulholland</a></p>
-					</br>
-					<p><a href="https://github.com/pmulholland42/CoolGameDotWin">Github repository</a></p>
-					</br>
-					<p>Uses <a href="https://davidshimjs.github.io/qrcodejs/">qrcodejs</a>, Copyright (c) 2012 davidshimjs</p>
-					<p>Uses <a href="https://hammerjs.github.io/">hammer.js</a>, Copyright (C) 2011-2017 by Jorik Tangelder (Eight Media)</p>
-					</br>
-					<h3>MIT License</h3>
-					<p>Copyright (c) 2018 Peter Mulholland</p>
-					<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
-					<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
-					<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
-				</div>
+				<p><a href="https://github.com/pmulholland42/CoolGameDotWin">Github repository</a></p>
+				</br>
+				<p>Uses <a href="https://davidshimjs.github.io/qrcodejs/">qrcodejs</a>, Copyright (c) 2012 davidshimjs</p>
+				<p>Uses <a href="https://hammerjs.github.io/">hammer.js</a>, Copyright (C) 2011-2017 by Jorik Tangelder (Eight Media)</p>
+				</br>
+				<h3>MIT License</h3>
+				<p>Copyright (c) 2018 Peter Mulholland</p>
+				<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+				<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+				<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
 			</div>
-			<script type = "text/javascript" src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
-			<script type="text/javascript" src="https://rawgit.com/davidshimjs/qrcodejs/master/qrcode.js"></script>
-			<script type="text/javascript" src="game.js?v={random number/string}"></script>
-			<link rel="stylesheet" href="game.css?v={random number/string}">
-			<iframe id="level1" src="lvl1.txt" onload="loadLevel();" style="display: none;"></iframe>
-		</frame>
+		</div>
+		
+		<!-- Level data -->
+		<iframe id="level1" src="lvl1.txt" onload="loadLevel();" style="display: none;"></iframe>	
     </body>
 </html>

@@ -88,7 +88,7 @@ var signalingServer = "ws://18.233.98.225:8080";
 var peerConnection; // WebRTC connection to the controller
 var dataChannel; // Communicates with the controller
 var remoteDescriptionSet = false;
-var qrCodeDiv = document.getElementById("qrcode");
+var qrCodeDiv;
 var qrCode;
 var UUID;
 var offer;
@@ -146,7 +146,8 @@ function init()
 {
 	// Initialize the canvas
 	console.log("Initializing canvas...");
-	setupCanvas();
+    canvas = document.getElementById("gamecanvas");
+	c = canvas.getContext('2d');
 	
 	// Load in all the sprites
 	snekman_down_right = document.createElement( 'img' );
@@ -166,6 +167,7 @@ function init()
 	snekman_right_up.src = "sprites/snekman_right_up.png";
 	snekman_right_down.src = "sprites/snekman_right_down.png";
 	
+	// Set initial player position
 	playerX = 2;
 	playerY = 12;
 	
@@ -185,6 +187,7 @@ function initializeConnection()
 	console.log("UUID: " + uuid);
 	var controllerURL = "coolgame.win/controller.html?id=" + uuid;
 	console.log("Controller: " + controllerURL);
+	qrCodeDiv = document.getElementById("qrcode");
 	qrCode = new QRCode(qrCodeDiv, controllerURL);
 	
 	// Connect to the signaling server
@@ -297,27 +300,6 @@ function loadLevel()
 			grid[j][i] = parseInt(curLine.charAt(j));
 		}
     }
-}
-
-function setupCanvas()
-{
-	// Create a <canvas> HTML tag
-    canvas = document.createElement('canvas');
-	
-	// Hide scroll bars
-	document.body.style.overflow = 'hidden';
-	
-	// Get a CanvasRenderingContext2D on the canvas
-	c = canvas.getContext('2d');
-	
-	// Create a <div> HTML tag called container
-	container = document.createElement('div');
-	container.className = "container";
-	
-	// Put the canvas in the container
-	container.appendChild(canvas);
-	// Put the container on the page
-	document.body.appendChild(container);
 }
 
 // Called when a key is held down
