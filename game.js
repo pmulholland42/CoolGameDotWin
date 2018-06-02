@@ -1015,6 +1015,7 @@ function toggleCredits()
 		document.getElementById("credits").style.display = "";
 		document.getElementById("toggleCredits").innerHTML = "Hide credits";
 		document.getElementById("menu").style.width = "40%";
+		document.getElementById("qrcode").style.width = "40%";
 	}
 	else
 	{
@@ -1022,6 +1023,7 @@ function toggleCredits()
 		document.getElementById("credits").style.display = "none";
 		document.getElementById("toggleCredits").innerHTML = "View credits";
 		document.getElementById("menu").style.width = "15%";
+		document.getElementById("qrcode").style.width = "90%";
 	}
 	return false;
 }

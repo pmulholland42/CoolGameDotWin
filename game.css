@@ -18,21 +18,29 @@ canvas
 	background-repeat: repeat;
 }
 
+img
+{
+	margin: auto;
+	max-width: 100%;
+}
+
 .menu
 {
+	text-align: center;
     margin: auto;
     width: 15%;
+	min-width: 200px;
+	max-height: 90%;
     border: 3px solid black;
     padding: 10px;
 	position: absolute;
 	background-color: white;
-    margin-left: auto;
-    margin-right: auto;
 	display:block;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	font-family: "Helvetica";
+	overflow: scroll;
 }
 
 .qrcode
