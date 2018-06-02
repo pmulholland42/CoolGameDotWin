@@ -2,7 +2,7 @@
 
 // Page variables
 var canvas; 			// <canvas> HTML tag
-var c;					// Canvas rendering context
+var ctx;				// Canvas rendering context
 var container;			// <div> HTML tag
 
 // Player physics variables:
@@ -74,14 +74,17 @@ var snekLast = null;
 var snekCount = 0;
 
 // Sprites
-var snekman_down_right;
-var snekman_down_left;
-var snekman_up_right;
-var snekman_up_left;
-var snekman_left_up;
-var snekman_left_down;
-var snekman_right_up;
-var snekman_right_down;
+var snekman_down_right = new Image();
+var snekman_down_left = new Image();
+var snekman_up_right = new Image();
+var snekman_up_left = new Image();
+var snekman_left_up = new Image();
+var snekman_left_down = new Image();
+var snekman_right_up = new Image();
+var snekman_right_down = new Image();
+var snek_left = new Image();
+var snek_right = new Image();
+var door = new Image();
 
 // WebRTC
 var signalingServer = "ws://18.233.98.225:8080";
@@ -147,17 +150,9 @@ function init()
 	// Initialize the canvas
 	console.log("Initializing canvas...");
     canvas = document.getElementById("gamecanvas");
-	c = canvas.getContext('2d');
+	ctx = canvas.getContext('2d');
 	
 	// Load in all the sprites
-	snekman_down_right = document.createElement( 'img' );
-	snekman_down_left = document.createElement( 'img' );
-	snekman_up_right = document.createElement( 'img' );
-	snekman_up_left = document.createElement( 'img' );
-	snekman_left_up = document.createElement( 'img' );
-	snekman_left_down = document.createElement( 'img' );
-	snekman_right_up = document.createElement( 'img' ); 
-	snekman_right_down = document.createElement( 'img' );
 	snekman_down_right.src = "sprites/snekman_down_right.png";
 	snekman_down_left.src = "sprites/snekman_down_left.png";
 	snekman_up_right.src = "sprites/snekman_up_right.png";
@@ -166,6 +161,9 @@ function init()
 	snekman_left_down.src = "sprites/snekman_left_down.png";
 	snekman_right_up.src = "sprites/snekman_right_up.png";
 	snekman_right_down.src = "sprites/snekman_right_down.png";
+	snek_left.src = "sprites/snek_left.png";
+	snek_right.src = "sprites/snek_left.png";
+	door.src = "sprites/door.png";
 	
 	// Set initial player position
 	playerX = 2;
@@ -183,10 +181,11 @@ function init()
 
 function initializeConnection()
 {
+	// Generate the controller ID and display the link as a QR code
 	var id = createID();
 	console.log("Controller ID: " + id);
 	var controllerURL = "coolgame.win/controller.html?id=" + id;
-	console.log("Controller: " + controllerURL);
+	console.log("Controller URL: " + controllerURL);
 	qrCodeDiv = document.getElementById("qrcode");
 	qrCode = new QRCode(qrCodeDiv, controllerURL);
 	
@@ -791,14 +790,15 @@ function game()
 				// Change the color depending on the block type
 				if (block == blocks.stone)
 				{
-					c.fillStyle = "rgba(0, 128, 0, 1)"; // Green
+					ctx.fillStyle = "rgba(0, 128, 0, 1)"; // Green
+					ctx.fillRect(x * blockSize, y * blockSize, blockSize+1, blockSize+1);
 				}
 				else if (block == blocks.door)
 				{
-					c.fillStyle = "rgba(80, 45, 30, 1)"; // Brown
+					ctx.imageSmoothingEnabled = false;
+					ctx.drawImage(door, x * blockSize, y * blockSize, blockSize+1, blockSize*2);
 				}
-				// Draw the block
-				c.fillRect(x * blockSize, y * blockSize, blockSize+1, blockSize+1);
+				
 			}
 		}
 	}
@@ -806,24 +806,25 @@ function game()
 	// Draw grid lines
 	if (devMode)
 	{
-		c.strokeStyle = "rgba(150, 150, 150, .3)";
+		ctx.strokeStyle = "rgba(150, 150, 150, .3)";
 		for (var x = 0; x <= gridWidth; x++)
 		{
-			c.beginPath();
-			c.moveTo(x * blockSize, 0);
-			c.lineTo(x * blockSize, canvas.height);
-			c.stroke();
+			ctx.beginPath();
+			ctx.moveTo(x * blockSize, 0);
+			ctx.lineTo(x * blockSize, canvas.height);
+			ctx.stroke();
 		}
 		for (var y = 0; y < gridHeight; y++)
 		{
-			c.beginPath();
-			c.moveTo(0, y * blockSize);
-			c.lineTo(canvas.width, blockSize * y);
-			c.stroke();
+			ctx.beginPath();
+			ctx.moveTo(0, y * blockSize);
+			ctx.lineTo(canvas.width, blockSize * y);
+			ctx.stroke();
 		}
 	}
 	
 	// Draw the player
+	ctx.imageSmoothingEnabled = true;
 	var currentSprite;
 	if (gravityDirection == directions.down)
 	{
@@ -847,105 +848,105 @@ function game()
 	}
 	
 	if (gravityDirection == directions.down || gravityDirection == directions.up)
-		c.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
+		ctx.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
 	else
-		c.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
+		ctx.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
 
 	// Display stats
 	if (devMode)
 	{
 		// Red dot on player position
-		c.fillStyle = "rgba(255, 80, 80, 1)";
-		c.fillRect(playerX*blockSize-2, playerY*blockSize-2, 4, 4);
+		ctx.fillStyle = "rgba(255, 80, 80, 1)";
+		ctx.fillRect(playerX*blockSize-2, playerY*blockSize-2, 4, 4);
 		
 		// Debug stats:
 		// X position and speed
 		if (playerXSpeed > 0)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else if (playerXSpeed < 0)
-			c.fillStyle = "red";
+			ctx.fillStyle = "red";
 		else
-			c.fillStyle = "white";
-		c.fillText('X velocity: ' + playerXSpeed, 10, 40);
-		c.fillText('X position: ' + playerX, 10, 60);
+			ctx.fillStyle = "white";
+		ctx.fillText('X velocity: ' + playerXSpeed, 10, 40);
+		ctx.fillText('X position: ' + playerX, 10, 60);
 		
 		// Y position and speed
 		if (playerYSpeed < 0)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else if (playerYSpeed > 0)
-			c.fillStyle = "red";
+			ctx.fillStyle = "red";
 		else
-			c.fillStyle = "white";
-		c.fillText('Y velocity: ' + playerYSpeed, 10, 80);
-		c.fillText('Y position: ' + playerY, 10, 100);
+			ctx.fillStyle = "white";
+		ctx.fillText('Y velocity: ' + playerYSpeed, 10, 80);
+		ctx.fillText('Y position: ' + playerY, 10, 100);
 		
 		// Grounded
 		if (grounded)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else
-			c.fillStyle = "red";
-		c.fillText('Grounded: ' + grounded, 10, 130);
+			ctx.fillStyle = "red";
+		ctx.fillText('Grounded: ' + grounded, 10, 130);
 		
 		// Jumping
 		if (jumping)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else
-			c.fillStyle = "red";
-		c.fillText('Jumping: '+ jumping, 10, 150);
+			ctx.fillStyle = "red";
+		ctx.fillText('Jumping: '+ jumping, 10, 150);
 		
 		// Can Jump
 		if (canJump)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else
-			c.fillStyle = "red";
-		c.fillText('Can Jump: '+ canJump, 10, 170);
+			ctx.fillStyle = "red";
+		ctx.fillText('Can Jump: '+ canJump, 10, 170);
 		
 		// Air Resistance
 		if (airResistance)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else
-			c.fillStyle = "red";
-		c.fillText('Air resistance: '+ airResistance, 10, 190);
+			ctx.fillStyle = "red";
+		ctx.fillText('Air resistance: '+ airResistance, 10, 190);
 
 		
 		// Screen size
-		c.fillStyle = "white";
-		c.fillText('Canvas width: '+ canvas.width, 10, 230);
-		c.fillText('Window width: ' + window.innerWidth, 10, 250);
-		c.fillText('Canvas height: ' + canvas.height, 10, 270);
-		c.fillText('Window height: ' + window.innerHeight, 10, 290);
-		c.fillText('FPS: ' + framesPerSecond, 10, 300);  
+		ctx.fillStyle = "white";
+		ctx.fillText('Canvas width: '+ canvas.width, 10, 230);
+		ctx.fillText('Window width: ' + window.innerWidth, 10, 250);
+		ctx.fillText('Canvas height: ' + canvas.height, 10, 270);
+		ctx.fillText('Window height: ' + window.innerHeight, 10, 290);
+		ctx.fillText('FPS: ' + framesPerSecond, 10, 300);  
 		
 		// Data channel connection status
 		if (dataChannel)
 		{
-			if (dataChannel.readyState == "open") c.fillStyle = "green";
-			else if (dataChannel.readyState == "connecting") c.fillStyle = "yellow";
-			else if (dataChannel.readyState == "closing") c.fillStyle = "orange";
-			else if (dataChannel.readyState == "closed") c.fillStyle = "red";
-			c.fillText('Data channel: ' + dataChannel.readyState, 10, 320);
+			if (dataChannel.readyState == "open") ctx.fillStyle = "green";
+			else if (dataChannel.readyState == "connecting") ctx.fillStyle = "yellow";
+			else if (dataChannel.readyState == "closing") ctx.fillStyle = "orange";
+			else if (dataChannel.readyState == "closed") ctx.fillStyle = "red";
+			ctx.fillText('Data channel: ' + dataChannel.readyState, 10, 320);
 		}
 		
 		// Touching left side
 		if (touchingLeft)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else
-			c.fillStyle = "red";
-		c.fillText('Touching left: '+ touchingLeft, 10, 340);
+			ctx.fillStyle = "red";
+		ctx.fillText('Touching left: '+ touchingLeft, 10, 340);
 		
 		// Touching right side
 		if (touchingLeft)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else
-			c.fillStyle = "red";
-		c.fillText('Touching right: '+ touchingRight, 10, 360);
+			ctx.fillStyle = "red";
+		ctx.fillText('Touching right: '+ touchingRight, 10, 360);
 		
 		// Pressing right side
 		if (pressing)
-			c.fillStyle = "green";
+			ctx.fillStyle = "green";
 		else
-			c.fillStyle = "red";
-		c.fillText('Pressing: '+ pressing, 10, 380);
+			ctx.fillStyle = "red";
+		ctx.fillText('Pressing: '+ pressing, 10, 380);
 	}
 	
 	// Reset the physics timer
