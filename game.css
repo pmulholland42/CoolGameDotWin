@@ -41,7 +41,7 @@ img
 	left: 50%;
 	transform: translate(-50%, -50%);
 	font-family: "Helvetica";
-	overflow-y: scroll;
+	overflow-y: auto;
 }
 
 .qrcode

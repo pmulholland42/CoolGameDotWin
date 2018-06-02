@@ -11,8 +11,8 @@ initializeConnection();
 function initializeConnection()
 {	
 	var url = new URL(window.location.href);
-	var uuid = url.searchParams.get("id");
-	console.log(uuid);
+	var id = url.searchParams.get("id");
+	console.log(id);
 	
 	// Connect to the signaling server
 	console.log("Connecting to signaling server...");
@@ -33,7 +33,7 @@ function initializeConnection()
 		{
 			if(event.candidate != null)
 			{
-				serverConnection.send(JSON.stringify({'ice': event.candidate, 'uuid': uuid}));
+				serverConnection.send(JSON.stringify({'ice': event.candidate, 'id': id}));
 			}
 		}
 
@@ -45,7 +45,7 @@ function initializeConnection()
 		{
 			// Send the offer to the game via the signaling server
 			console.log("Offer created. Sending offer...");
-			serverConnection.send(JSON.stringify({'sdp': description, 'uuid': uuid}));
+			serverConnection.send(JSON.stringify({'sdp': description, 'id': id}));
 			peerConnection.setLocalDescription(description).then(onLocalDescriptionSuccess, onError);
 		}
 	});
@@ -53,7 +53,7 @@ function initializeConnection()
 	function gotMessageFromServer(message)
 	{
 		var signal = JSON.parse(message.data);
-		if(signal.uuid != uuid) return;
+		if(signal.id != id) return;
 		if(signal.sdp && signal.sdp.type == 'answer')
 		{
 			// Here we get an answer back from the game via the server
@@ -93,7 +93,7 @@ function initializeConnection()
 	
 	function sayHello()
 	{
-		dataChannel.send(uuid);
+		dataChannel.send(id);
 	}
 	
 	function gotMessageFromGame(event)

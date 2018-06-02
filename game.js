@@ -183,9 +183,9 @@ function init()
 
 function initializeConnection()
 {
-	var uuid = createUUID();
-	console.log("UUID: " + uuid);
-	var controllerURL = "coolgame.win/controller.html?id=" + uuid;
+	var id = createID();
+	console.log("Controller ID: " + id);
+	var controllerURL = "coolgame.win/controller.html?id=" + id;
 	console.log("Controller: " + controllerURL);
 	qrCodeDiv = document.getElementById("qrcode");
 	qrCode = new QRCode(qrCodeDiv, controllerURL);
@@ -206,7 +206,7 @@ function initializeConnection()
 		{
 			if(event.candidate != null)
 			{
-				serverConnection.send(JSON.stringify({'ice': event.candidate, 'uuid': uuid}));
+				serverConnection.send(JSON.stringify({'ice': event.candidate, 'id': id}));
 			}
 		}
 		serverConnection.onmessage = gotMessageFromServer;
@@ -216,7 +216,7 @@ function initializeConnection()
 	function gotMessageFromServer(message)
 	{
 		var signal = JSON.parse(message.data);
-		if(signal.uuid != uuid) return;
+		if(signal.id != id) return;
 		if(signal.sdp && !remoteDescriptionSet)
 		{
 			peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function()
@@ -241,7 +241,7 @@ function initializeConnection()
 	{
 		// Send the answer to the controller via the signaling server
 		console.log("Answer created. Sending answer...");
-		serverConnection.send(JSON.stringify({'sdp': description, 'uuid': uuid}));
+		serverConnection.send(JSON.stringify({'sdp': description, 'id': id}));
 		peerConnection.setLocalDescription(description).then(onLocalDescriptionSuccess, onError);
 	}
 	
@@ -274,13 +274,9 @@ function initializeConnection()
 	}
 }
 
-function createUUID()
+function createID()
 {
-	function s4()
-	{
-		return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-	}
-	return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+	return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
 }
 
 function loadLevel()
