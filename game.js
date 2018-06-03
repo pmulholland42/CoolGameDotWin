@@ -459,13 +459,13 @@ function game()
 	// Determine the player's hitbox size
 	if (gravityDirection == directions.down || gravityDirection == directions.up)
 	{
-		playerWidth = blockSize*0.49;
-		playerHeight = blockSize*0.95;
+		playerWidth = blockSize*0.72;
+		playerHeight = blockSize*1.4;
 	}
 	else 
 	{
-		playerWidth = blockSize*0.95;
-		playerHeight = blockSize*0.49;
+		playerWidth = blockSize*1.4;
+		playerHeight = blockSize*0.72;
 	}				
 	offsetX = playerWidth/(blockSize*2);
 	offsetY = playerHeight/(blockSize*2);
@@ -824,7 +824,7 @@ function game()
 	}
 	
 	// Draw the player
-	ctx.imageSmoothingEnabled = true;
+	ctx.imageSmoothingEnabled = false;
 	var currentSprite;
 	if (gravityDirection == directions.down)
 	{
