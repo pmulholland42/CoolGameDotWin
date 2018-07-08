@@ -13,6 +13,7 @@ var playerLastY;
 var playerXSpeed = 0;	
 var playerYSpeed = 0;
 var grounded = false;
+
 // Used for collision detection:
 var playerWidth;
 var playerHeight;
@@ -21,6 +22,9 @@ var adjustY;
 var offsetX; // Half of player width
 var offsetY;
 var precisionFactor = 0.000001; // Used for correcting floating point errors
+
+// Offset for side scrolling
+var scrollX;
 
 // Adjustable values:
 var tickRate = 3; // Number of milliseconds between game loop calls
@@ -48,8 +52,10 @@ var facing = directions.right;
 var devMode = false; // Displays stats and shows grid
 
 // Level data
-var gridWidth = 32;
-var gridHeight = 16;
+var displayGridWidth = 32;
+var displayGridHeight = 16;
+var levelWidth = 43;
+var levelHeight = 16;
 var blockSize;
 var grid;
 var numBlockTypes = 2;
@@ -281,7 +287,7 @@ function createID()
 function loadLevel()
 {
 	// Editor array 32*16
-	grid = createArray(gridWidth, gridHeight);
+	grid = createArray(50, displayGridHeight);
     var oFrame = document.getElementById("level1");
     var strRawContents = oFrame.contentWindow.document.body.childNodes[0].innerHTML;
     while (strRawContents.indexOf("\r") >= 0)
@@ -290,7 +296,7 @@ function loadLevel()
     for (var i = 0; i < arrLines.length; i++)
 	{
         var curLine = arrLines[i];
-        for (var j = 0; j < gridWidth; j++)
+        for (var j = 0; j < curLine.length; j++)
 		{
 			grid[j][i] = parseInt(curLine.charAt(j));
 		}
@@ -419,20 +425,36 @@ function game()
 	deltaT = (now - then)/1000;
 	
 	// Determine how big the canvas should be
-	if (window.innerWidth/gridWidth > window.innerHeight/gridHeight) 
+	if (window.innerWidth/displayGridWidth > window.innerHeight/displayGridHeight) 
 	{
 		// Screen is too wide, base the grid off screen height
 		// Should see walls
-		blockSize = window.innerHeight/gridHeight;
+		blockSize = window.innerHeight/displayGridHeight;
 	}
 	else
 	{
 		// Screen is not wide enough, base the grid off screen width
 		// Should see floor
-		blockSize = window.innerWidth/gridWidth;
+		blockSize = window.innerWidth/displayGridWidth;
 	}
-	canvas.width = blockSize * gridWidth;
-	canvas.height = blockSize * gridHeight;
+	canvas.width = blockSize * displayGridWidth;
+	canvas.height = blockSize * displayGridHeight;
+	
+	// Determine offset for side scrolling
+	if (playerX < displayGridWidth/2)
+	{
+		scrollX = 0;
+	}
+	else if (playerX > levelWidth - (displayGridWidth/2))
+	{
+		scrollX = levelWidth - (displayGridWidth);
+	}
+	else
+	{
+		scrollX = playerX - (displayGridWidth/2);
+	}
+		
+		
 
 	// Change gravity direction
 	if (heldKeys[controls.gravityUp] || swipeUp)
@@ -627,7 +649,7 @@ function game()
 		var pBlockY = Math.floor(playerY + offsetY);
 		
 		// Make sure it's inbounds
-		if (pBlockX >= 0 && pBlockX < gridWidth && pBlockY >= 0 && pBlockY < gridHeight)
+		if (pBlockX >= 0 && pBlockX < levelWidth && pBlockY >= 0 && pBlockY < levelHeight)
 		{	
 			// Check if it is a solid block
 			if (grid[pBlockX][pBlockY] == blocks.stone)
@@ -729,9 +751,9 @@ function game()
 				}
 			}
 			// Ground collision detection
-			else if (playerY + offsetY >= gridHeight)
+			else if (playerY + offsetY >= levelHeight)
 			{
-				playerY = gridHeight - offsetY;
+				playerY = levelHeight - offsetY;
 				playerYSpeed = 0;
 				if (gravityDirection == directions.down)
 				{
@@ -761,9 +783,9 @@ function game()
 				}
 			}
 			// Right wall collision detection
-			else if (playerX + offsetX >= gridWidth)
+			else if (playerX + offsetX >= levelWidth)
 			{
-				playerX = gridWidth - offsetX;
+				playerX = levelWidth - offsetX;
 				playerXSpeed = 0; 
 				if (gravityDirection == directions.right)
 				{
@@ -780,9 +802,9 @@ function game()
 	}
 	
 	// Draw the blocks
-	for (var x = 0; x < gridWidth; x++)
+	for (var x = 0; x < levelWidth; x++)
 	{
-		for (var y = 0; y < gridHeight; y++)
+		for (var y = 0; y < levelHeight; y++)
 		{
 			var block = grid[x][y];
 			if (block != blocks.air)
@@ -791,12 +813,12 @@ function game()
 				if (block == blocks.stone)
 				{
 					ctx.fillStyle = "rgba(0, 128, 0, 1)"; // Green
-					ctx.fillRect(x * blockSize, y * blockSize, blockSize+1, blockSize+1);
+					ctx.fillRect((x - scrollX) * blockSize, y * blockSize, blockSize+1, blockSize+1);
 				}
 				else if (block == blocks.door)
 				{
 					ctx.imageSmoothingEnabled = false;
-					ctx.drawImage(door, x * blockSize, y * blockSize, blockSize+1, blockSize*2);
+					ctx.drawImage(door, (x - scrollX) * blockSize, y * blockSize, blockSize+1, blockSize*2);
 				}
 				
 			}
@@ -807,14 +829,14 @@ function game()
 	if (devMode)
 	{
 		ctx.strokeStyle = "rgba(150, 150, 150, .3)";
-		for (var x = 0; x <= gridWidth; x++)
+		for (var x = 0; x <= displayGridWidth; x++)
 		{
 			ctx.beginPath();
 			ctx.moveTo(x * blockSize, 0);
 			ctx.lineTo(x * blockSize, canvas.height);
 			ctx.stroke();
 		}
-		for (var y = 0; y < gridHeight; y++)
+		for (var y = 0; y < displayGridHeight; y++)
 		{
 			ctx.beginPath();
 			ctx.moveTo(0, y * blockSize);
@@ -848,9 +870,9 @@ function game()
 	}
 	
 	if (gravityDirection == directions.down || gravityDirection == directions.up)
-		ctx.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
+		ctx.drawImage(currentSprite, (playerX-scrollX)*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
 	else
-		ctx.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
+		ctx.drawImage(currentSprite, (playerX-scrollX)*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
 
 	// Display stats
 	if (devMode)
@@ -947,6 +969,7 @@ function game()
 		else
 			ctx.fillStyle = "red";
 		ctx.fillText('Pressing: '+ pressing, 10, 380);
+		ctx.fillText('scroll: '+ scrollX, 10, 400);
 	}
 	
 	// Reset the physics timer
