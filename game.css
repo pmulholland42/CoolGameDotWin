@@ -7,6 +7,11 @@ body, html
 	overflow: hidden;
 }
 
+p
+{
+	padding-bottom: 5px;
+}
+
 canvas
 {
 	padding-left: 0;
