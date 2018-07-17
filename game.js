@@ -69,9 +69,10 @@ var projCount = 0;		// Number of player projectiles
 var projTimer = 0;		// Projectile cooldown timer
 
 // Snek variables
-var snekHead = null;
-var snekLast = null;
-var snekCount = 0;
+var sneks = [];
+var maxSnekHP = 3; // Hit points that sneks start with
+var snekSpeed = 1.25; // How fast the sneks move (blocks per second)
+var snekHeight = 0.65; // Height of a snek in blocks
 
 // Sprites
 var snekman_down_right = new Image();
@@ -287,12 +288,25 @@ function loadLevel()
     while (strRawContents.indexOf("\r") >= 0)
         strRawContents = strRawContents.replace("\r", "");
     var arrLines = strRawContents.split("\n");
-    for (var i = 0; i < arrLines.length; i++)
+    for (var y = 0; y < arrLines.length; y++)
 	{
-        var curLine = arrLines[i];
-        for (var j = 0; j < gridWidth; j++)
+        var curLine = arrLines[y];
+        for (var x = 0; x < gridWidth; x++)
 		{
-			grid[j][i] = parseInt(curLine.charAt(j));
+			var block = curLine.charAt(x);
+			if (!isNaN(parseInt(block)))
+			{
+				grid[x][y] = parseInt(block);
+			}
+			else
+			{
+				var snek = new Object();
+				snek.x = x;
+				snek.y = y + (1 - snekHeight);
+				snek.hp = maxSnekHP;
+				snek.direction = 1;
+				sneks.push(snek);
+			}
 		}
     }
 }
@@ -580,6 +594,17 @@ function game()
 	// Assume the player is in the air unless they collide with the ground.
 	grounded = false;
 	
+	// Move the sneks
+	for (var snekNum = 0, length = sneks.length; snekNum < length; snekNum++)
+	{
+		var currSnek = sneks[snekNum];
+		if (grid[Math.floor(currSnek.x)][Math.ceil(currSnek.y)] != blocks.stone)
+		{
+			currSnek.direction *= -1;
+		}
+		currSnek.x += snekSpeed * deltaT * currSnek.direction;
+	}
+	
 	// Detect collision for each corner of the player's collision box.
 	for (var corner = 0; corner < 4; corner++)
 	{
@@ -851,6 +876,17 @@ function game()
 		ctx.drawImage(currentSprite, playerX*blockSize-playerWidth*0.75, playerY*blockSize-playerHeight/2, playerWidth*1.5, playerHeight);
 	else
 		ctx.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
+	
+	// Draw the sneks
+	ctx.fillStyle = "rgba(25, 200, 25, 1";
+	for (var snekNum = 0, length = sneks.length; snekNum < length; snekNum++)
+	{
+		var currSnek = sneks[snekNum];
+			ctx.fillStyle = "rgba(25, 200, 25, 1";
+		ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, 10, snekHeight * blockSize);
+		ctx.fillStyle = "red";
+		ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, 5, 5);
+	}
 
 	// Display stats
 	if (devMode)
