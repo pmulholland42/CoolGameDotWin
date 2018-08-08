@@ -20,8 +20,15 @@ canvas
     margin-right: auto;
 	display:block;
     background-color:transparent;
-	background-image: url("sprites/bg.jpg");
+	background-image: url("sprites/bg.png");
+	background-size: 160px 160px;
 	background-repeat: repeat;
+	image-rendering: optimizeSpeed;             /* STOP SMOOTHING, GIVE ME SPEED  */
+	image-rendering: -moz-crisp-edges;          /* Firefox                        */
+	image-rendering: -o-crisp-edges;            /* Opera                          */
+	image-rendering: -webkit-optimize-contrast; /* Chrome (and eventually Safari) */
+	image-rendering: pixelated; /* Chrome */
+	-ms-interpolation-mode: nearest-neighbor;   /* IE8+                           */
 }
 
 img
