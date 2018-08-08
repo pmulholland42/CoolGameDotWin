@@ -600,9 +600,17 @@ function game()
 		var currSnek = sneks[snekNum];
 		if (grid[Math.floor(currSnek.x)][Math.ceil(currSnek.y)] != blocks.stone)
 		{
+			// Reverse movement direction when a legde is encountered
 			currSnek.direction *= -1;
+			// Jump the snek back a bit to prevent him from getting stuck in the air
+			currSnek.x += currSnek.direction/15;
 		}
 		currSnek.x += snekSpeed * deltaT * currSnek.direction;
+
+		// Check for collision with player
+		if ((Math.abs(currSnek.x - playerX) < playerWidth/(blockSize*2)) && (Math.abs(currSnek.y - playerY) < playerHeight/(blockSize*2))) {
+			console.log("hit!");
+		}
 	}
 	
 	// Detect collision for each corner of the player's collision box.
@@ -878,14 +886,18 @@ function game()
 		ctx.drawImage(currentSprite, playerX*blockSize-playerWidth/2, playerY*blockSize-playerHeight*0.75, playerWidth, playerHeight*1.5);
 	
 	// Draw the sneks
-	ctx.fillStyle = "rgba(25, 200, 25, 1";
+	ctx.fillStyle = "rgba(25, 200, 25, 1)";
+	ctx.font = "bold " + Math.ceil(blockSize/4) + "px courier";
 	for (var snekNum = 0, length = sneks.length; snekNum < length; snekNum++)
 	{
 		var currSnek = sneks[snekNum];
-			ctx.fillStyle = "rgba(25, 200, 25, 1";
-		ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, 10, snekHeight * blockSize);
-		ctx.fillStyle = "red";
-		ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, 5, 5);
+		ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, (snekHeight * blockSize)/4, snekHeight * blockSize);
+		ctx.fillText("Snek | " + currSnek.hp + "HP", (currSnek.x * blockSize) - 25, (currSnek.y * blockSize) - 15);
+		if (devMode) {
+			ctx.fillStyle = "red";
+			ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, 5, 5);
+			ctx.fillStyle = "rgba(25, 200, 25, 1)";
+		}
 	}
 
 	// Display stats
