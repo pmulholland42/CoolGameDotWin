@@ -61,12 +61,10 @@ var blocks = {
 var winner = false;
 
 // Projectile variables
-var projSpeed = 15;		// Velocity of projectiles shot by player
-var projCooldown = 10;	// Number of ticks till you can shoot again
-var projHead = null;	// Head of the projectile linked list
-var projLast = null;	// Last element of projectile linked list
-var projCount = 0;		// Number of player projectiles
-var projTimer = 0;		// Projectile cooldown timer
+var bulletSpeed = 4;		// Velocity of projectiles shot by player (blocks per second)
+var bulletCooldown = 0.25;	// Number of seconds until you can shoot again
+var bulletTimer = 0;		// Projectile cooldown timer
+var bullets = [];			// Projectiles shot by the player
 
 // Snek variables
 var sneks = [];
@@ -118,6 +116,7 @@ var controls = {
 	up: 87, // W
 	down: 83, // S
 	jump: 32, // Spacebar
+	shoot: 69, // E
 	gravityUp: 38, // Up arrow
 	gravityDown: 40, // Down arrow
 	gravityLeft: 37, // Left arrow
@@ -353,7 +352,6 @@ function onControllerInput(event)
 	var message = JSON.parse(event.data);
 	if (message.action)
 	{
-		console.log(message.action);
 		if (message.action == "swipeUp")
 		{
 			swipeUp = true;
@@ -609,7 +607,7 @@ function game()
 
 		// Check for collision with player
 		if ((Math.abs(currSnek.x - playerX) < playerWidth/(blockSize*2)) && (Math.abs(currSnek.y - playerY) < playerHeight/(blockSize*2))) {
-			console.log("hit!");
+			
 		}
 	}
 	
@@ -811,6 +809,66 @@ function game()
 			}
 		}
 	}
+
+	// Shooting
+	if (heldKeys[controls.shoot]) 
+	{
+		if (bulletTimer <= 0) 
+		{
+			// Shoot
+			let bullet = new Object();
+			bullet.x = playerX * blockSize;
+			bullet.y = playerY * blockSize;
+			if (gravityDirection == directions.down || gravityDirection == directions.up) 
+			{
+				if (facing == directions.left)
+				{
+					bullet.xSpeed = -bulletSpeed;
+				}
+				else
+				{
+					bullet.xSpeed = bulletSpeed;
+				}
+				bullet.ySpeed = 0;
+			}
+			else
+			{
+				if (facing == directions.up)
+				{
+					bullet.ySpeed = -bulletSpeed;
+				}
+				else
+				{
+					bullet.ySpeed = bulletSpeed;
+				}
+				bullet.xSpeed = 0;
+			}
+			bullets.push(bullet);
+
+			// Reset timer
+			bulletTimer = bulletCooldown;
+		}
+	}
+	if (bulletTimer > 0) 
+	{
+		bulletTimer -= deltaT;
+	}
+
+	// Move the bullets
+	for (var bulletNum = 0, length = bullets.length; bulletNum < length; bulletNum++) 
+	{
+		// Change the bullet location
+		let bullet = bullets[bulletNum];
+		bullet.x += bullet.xSpeed;
+		bullet.y += bullet.ySpeed;
+
+		// Remove bullets that go off screen
+		if (bullet.x > gridWidth*blockSize || bullet.x < 0 || bullet.y > gridHeight*blockSize || bullet.y < 0) 
+		{
+			bullets.splice(bulletNum, 1);
+			length--;
+		}
+	}
 	
 	// Draw the blocks
 	for (var x = 0; x < gridWidth; x++)
@@ -836,26 +894,13 @@ function game()
 		}
 	}
 	
-	// Draw grid lines
-	if (devMode)
-	{
-		ctx.strokeStyle = "rgba(150, 150, 150, .3)";
-		for (var x = 0; x <= gridWidth; x++)
-		{
-			ctx.beginPath();
-			ctx.moveTo(x * blockSize, 0);
-			ctx.lineTo(x * blockSize, canvas.height);
-			ctx.stroke();
-		}
-		for (var y = 0; y < gridHeight; y++)
-		{
-			ctx.beginPath();
-			ctx.moveTo(0, y * blockSize);
-			ctx.lineTo(canvas.width, blockSize * y);
-			ctx.stroke();
-		}
+	// Draw the bullets
+	ctx.fillStyle = "rgba(200, 0, 0, 1)"; // Red
+	for (var bulletNum = 0, length = bullets.length; bulletNum < length; bulletNum++) {
+		let bullet = bullets[bulletNum];
+		ctx.fillRect(bullet.x, bullet.y, blockSize/5, blockSize/5);
 	}
-	
+
 	// Draw the player
 	ctx.imageSmoothingEnabled = false;
 	var currentSprite;
@@ -900,9 +945,26 @@ function game()
 		}
 	}
 
-	// Display stats
+	// Display debugging info
 	if (devMode)
 	{
+		// Draw grid
+		ctx.strokeStyle = "rgba(150, 150, 150, .3)";
+		for (var x = 0; x <= gridWidth; x++)
+		{
+			ctx.beginPath();
+			ctx.moveTo(x * blockSize, 0);
+			ctx.lineTo(x * blockSize, canvas.height);
+			ctx.stroke();
+		}
+		for (var y = 0; y < gridHeight; y++)
+		{
+			ctx.beginPath();
+			ctx.moveTo(0, y * blockSize);
+			ctx.lineTo(canvas.width, blockSize * y);
+			ctx.stroke();
+		}
+
 		// Red dot on player position
 		ctx.fillStyle = "rgba(255, 80, 80, 1)";
 		ctx.fillRect(playerX*blockSize-2, playerY*blockSize-2, 4, 4);
@@ -927,6 +989,9 @@ function game()
 			ctx.fillStyle = "white";
 		ctx.fillText('Y velocity: ' + playerYSpeed, 10, 80);
 		ctx.fillText('Y position: ' + playerY, 10, 100);
+
+		// Number of projectiles
+		ctx.fillText(bullets.length + ' projectiles on screen', 10, 115);
 		
 		// Grounded
 		if (grounded)
