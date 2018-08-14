@@ -598,9 +598,9 @@ function game()
 	for (var snekNum = 0, length = sneks.length; snekNum < length; snekNum++)
 	{
 		var currSnek = sneks[snekNum];
-		if (grid[Math.floor(currSnek.x)][Math.ceil(currSnek.y)] != blocks.stone)
+		if ((grid[Math.floor(currSnek.x)][Math.ceil(currSnek.y)] != blocks.stone && Math.ceil(currSnek.y) != gridHeight) || grid[Math.floor(currSnek.x)][Math.floor(currSnek.y)] == blocks.stone || Math.floor(currSnek.x) > gridWidth || Math.floor(currSnek.x) < 0)
 		{
-			// Reverse movement direction when a legde is encountered
+			// Reverse movement direction when a ledge is encountered
 			currSnek.direction *= -1;
 			// Jump the snek back a bit to prevent him from getting stuck in the air
 			currSnek.x += currSnek.direction/15;
@@ -963,7 +963,7 @@ function game()
 		ctx.fillText('Window width: ' + window.innerWidth, 10, 250);
 		ctx.fillText('Canvas height: ' + canvas.height, 10, 270);
 		ctx.fillText('Window height: ' + window.innerHeight, 10, 290);
-		ctx.fillText('FPS: ' + framesPerSecond, 10, 300);  
+		ctx.fillText('FPS: ' + framesPerSecond, 10, 310);  
 		
 		// Data channel connection status
 		if (dataChannel)
