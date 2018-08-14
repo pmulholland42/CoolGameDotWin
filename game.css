@@ -21,7 +21,7 @@ canvas
 	display:block;
     background-color:transparent;
 	background-image: url("sprites/bg.png");
-	background-size: 160px 160px;
+	background-size: 20%;
 	background-repeat: repeat;
 	image-rendering: optimizeSpeed;             /* STOP SMOOTHING, GIVE ME SPEED  */
 	image-rendering: -moz-crisp-edges;          /* Firefox                        */
@@ -30,6 +30,7 @@ canvas
 	image-rendering: pixelated; /* Chrome */
 	-ms-interpolation-mode: nearest-neighbor;   /* IE8+                           */
 }
+
 
 img
 {
