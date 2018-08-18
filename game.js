@@ -886,8 +886,6 @@ function game()
 
 			if (Math.abs(snek.x - bullet.x) < 0.5 && (bullet.y - snek.y < snekHeight && bullet.y - snek.y > -0.1) && snek.damageTimer <= 0) 
 			{
-				console.log(bullet.y);
-				console.log(snek.y);
 				snek.hp--;
 				snek.damageTimer = invulnerabilityTime;
 			}
