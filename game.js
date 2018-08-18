@@ -748,6 +748,12 @@ function game()
 					}
 				}
 			}
+
+			// Check if the player has reached the exit
+			if (grid[pBlockX][pBlockY] == blocks.door || grid[pBlockX][pBlockY-1] == blocks.door)
+			{
+				winner = true;
+			}
 		}
 		else
 		{
@@ -967,6 +973,15 @@ function game()
 		}
 	}
 
+	// Display win text
+	ctx.imageSmoothingEnabled = true;
+	if (winner)
+	{
+		ctx.fillStyle = "white";
+		ctx.font = "bold " + Math.ceil(blockSize) + "px courier";
+		ctx.fillText("You Win!", ((gridWidth/2)-2)*blockSize, 5*blockSize);
+	}
+
 	// Display debugging info
 	if (devMode)
 	{
@@ -992,6 +1007,7 @@ function game()
 		ctx.fillRect(playerX*blockSize-2, playerY*blockSize-2, 4, 4);
 		
 		// Debug stats:
+		ctx.font = Math.ceil(blockSize/4) + "px courier";
 		// X position and speed
 		if (playerXSpeed > 0)
 			ctx.fillStyle = "green";
