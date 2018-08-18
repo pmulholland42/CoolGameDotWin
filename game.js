@@ -457,14 +457,12 @@ function game()
 		swipeDown = false;
 		changeGravity(directions.down);
 	}
-	else if (heldKeys[controls.gravityLeft] || swipeLeft)
+	else if (heldKeys[controls.gravityLeft])
 	{
-		swipeLeft = false;
 		changeGravity(directions.left);
 	}
-	else if (heldKeys[controls.gravityRight] || swipeRight)
+	else if (heldKeys[controls.gravityRight])
 	{
-		swipeRight = false;
 		changeGravity(directions.right);
 	}
 	
@@ -811,8 +809,10 @@ function game()
 	}
 
 	// Shooting
-	if (heldKeys[controls.shoot]) 
+	if (heldKeys[controls.shoot] || swipeRight || swipeLeft) 
 	{
+		swipeRight = false;
+		swipeLeft = false;
 		if (bulletTimer <= 0) 
 		{
 			// Shoot
