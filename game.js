@@ -61,7 +61,7 @@ var blocks = {
 var winner = false;
 
 // Projectile variables
-var bulletSpeed = 4;		// Velocity of projectiles shot by player (blocks per second)
+var bulletSpeed = 9;		// Velocity of projectiles shot by player (blocks per second)
 var bulletCooldown = 0.25;	// Number of seconds until you can shoot again
 var bulletTimer = 0;		// Projectile cooldown timer
 var bullets = [];			// Projectiles shot by the player
@@ -71,6 +71,7 @@ var sneks = [];
 var maxSnekHP = 3; // Hit points that sneks start with
 var snekSpeed = 1.25; // How fast the sneks move (blocks per second)
 var snekHeight = 0.65; // Height of a snek in blocks
+var invulnerabilityTime = 0.5; // Time after taking damage before you take damage again
 
 // Sprites
 var snekman_down_right = new Image();
@@ -304,6 +305,7 @@ function loadLevel()
 				snek.y = y + (1 - snekHeight);
 				snek.hp = maxSnekHP;
 				snek.direction = 1;
+				snek.damageTimer = 0;
 				sneks.push(snek);
 			}
 		}
@@ -457,14 +459,12 @@ function game()
 		swipeDown = false;
 		changeGravity(directions.down);
 	}
-	else if (heldKeys[controls.gravityLeft] || swipeLeft)
+	else if (heldKeys[controls.gravityLeft])
 	{
-		swipeLeft = false;
 		changeGravity(directions.left);
 	}
-	else if (heldKeys[controls.gravityRight] || swipeRight)
+	else if (heldKeys[controls.gravityRight])
 	{
-		swipeRight = false;
 		changeGravity(directions.right);
 	}
 	
@@ -596,6 +596,7 @@ function game()
 	for (var snekNum = 0, length = sneks.length; snekNum < length; snekNum++)
 	{
 		var currSnek = sneks[snekNum];
+		
 		if ((grid[Math.floor(currSnek.x)][Math.ceil(currSnek.y)] != blocks.stone && Math.ceil(currSnek.y) != gridHeight) || grid[Math.floor(currSnek.x)][Math.floor(currSnek.y)] == blocks.stone || Math.floor(currSnek.x) > gridWidth || Math.floor(currSnek.x) < 0)
 		{
 			// Reverse movement direction when a ledge is encountered
@@ -604,6 +605,13 @@ function game()
 			currSnek.x += currSnek.direction/15;
 		}
 		currSnek.x += snekSpeed * deltaT * currSnek.direction;
+		currSnek.damageTimer -= deltaT;
+
+		if (currSnek.hp <= 0) 
+		{
+			sneks.splice(snekNum, 1);
+			length--;
+		}
 
 		// Check for collision with player
 		if ((Math.abs(currSnek.x - playerX) < playerWidth/(blockSize*2)) && (Math.abs(currSnek.y - playerY) < playerHeight/(blockSize*2))) {
@@ -740,6 +748,12 @@ function game()
 					}
 				}
 			}
+
+			// Check if the player has reached the exit
+			if (grid[pBlockX][pBlockY] == blocks.door || grid[pBlockX][pBlockY-1] == blocks.door)
+			{
+				winner = true;
+			}
 		}
 		else
 		{
@@ -811,14 +825,16 @@ function game()
 	}
 
 	// Shooting
-	if (heldKeys[controls.shoot]) 
+	if (heldKeys[controls.shoot] || swipeRight || swipeLeft) 
 	{
+		swipeRight = false;
+		swipeLeft = false;
 		if (bulletTimer <= 0) 
 		{
 			// Shoot
 			let bullet = new Object();
-			bullet.x = playerX * blockSize;
-			bullet.y = playerY * blockSize;
+			bullet.x = playerX;
+			bullet.y = playerY;
 			if (gravityDirection == directions.down || gravityDirection == directions.up) 
 			{
 				if (facing == directions.left)
@@ -859,14 +875,26 @@ function game()
 	{
 		// Change the bullet location
 		let bullet = bullets[bulletNum];
-		bullet.x += bullet.xSpeed;
-		bullet.y += bullet.ySpeed;
+		bullet.x += bullet.xSpeed * deltaT;
+		bullet.y += bullet.ySpeed * deltaT;
 
 		// Remove bullets that go off screen
-		if (bullet.x > gridWidth*blockSize || bullet.x < 0 || bullet.y > gridHeight*blockSize || bullet.y < 0) 
+		if (bullet.x > gridWidth || bullet.x < 0 || bullet.y > gridHeight || bullet.y < 0) 
 		{
 			bullets.splice(bulletNum, 1);
 			length--;
+		}
+
+		// Check for snek collisions
+		for (let snekNum = 0, length = sneks.length; snekNum < length; snekNum++)
+		{
+			let snek = sneks[snekNum];
+
+			if (Math.abs(snek.x - bullet.x) < 0.5 && (bullet.y - snek.y < snekHeight && bullet.y - snek.y > -0.1) && snek.damageTimer <= 0) 
+			{
+				snek.hp--;
+				snek.damageTimer = invulnerabilityTime;
+			}
 		}
 	}
 	
@@ -898,7 +926,7 @@ function game()
 	ctx.fillStyle = "rgba(200, 0, 0, 1)"; // Red
 	for (var bulletNum = 0, length = bullets.length; bulletNum < length; bulletNum++) {
 		let bullet = bullets[bulletNum];
-		ctx.fillRect(bullet.x, bullet.y, blockSize/5, blockSize/5);
+		ctx.fillRect(bullet.x * blockSize, bullet.y * blockSize, blockSize/5, blockSize/5);
 	}
 
 	// Draw the player
@@ -936,13 +964,22 @@ function game()
 	for (var snekNum = 0, length = sneks.length; snekNum < length; snekNum++)
 	{
 		var currSnek = sneks[snekNum];
-		ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, (snekHeight * blockSize)/4, snekHeight * blockSize);
+		ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize + (snekHeight * blockSize * (1-(currSnek.hp / maxSnekHP))), (snekHeight * blockSize)/4, snekHeight * blockSize * (currSnek.hp / maxSnekHP));
 		ctx.fillText("Snek | " + currSnek.hp + "HP", (currSnek.x * blockSize) - 25, (currSnek.y * blockSize) - 15);
 		if (devMode) {
 			ctx.fillStyle = "red";
 			ctx.fillRect(currSnek.x * blockSize, currSnek.y * blockSize, 5, 5);
 			ctx.fillStyle = "rgba(25, 200, 25, 1)";
 		}
+	}
+
+	// Display win text
+	ctx.imageSmoothingEnabled = true;
+	if (winner)
+	{
+		ctx.fillStyle = "white";
+		ctx.font = "bold " + Math.ceil(blockSize) + "px courier";
+		ctx.fillText("You Win!", ((gridWidth/2)-2)*blockSize, 5*blockSize);
 	}
 
 	// Display debugging info
@@ -970,6 +1007,7 @@ function game()
 		ctx.fillRect(playerX*blockSize-2, playerY*blockSize-2, 4, 4);
 		
 		// Debug stats:
+		ctx.font = Math.ceil(blockSize/4) + "px courier";
 		// X position and speed
 		if (playerXSpeed > 0)
 			ctx.fillStyle = "green";
