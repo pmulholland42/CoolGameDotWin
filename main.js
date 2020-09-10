@@ -1,6 +1,6 @@
 
 
-var signalingServer = "ws://74.98.229.161:8080";
+var signalingServer = "ws://24.131.16.123:8080";
 var peerConnection; // WebRTC connection to the game
 var localDescriptionSet = false;
 var remoteDescriptionSet = false;
