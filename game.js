@@ -87,7 +87,7 @@ var snek_right = new Image();
 var door = new Image();
 
 // WebRTC
-var signalingServer = "ws://74.98.229.161:8080";
+var signalingServer = "ws://24.131.16.123:8080";
 var peerConnection; // WebRTC connection to the controller
 var dataChannel; // Communicates with the controller
 var remoteDescriptionSet = false;
